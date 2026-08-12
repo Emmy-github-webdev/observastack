@@ -36,3 +36,66 @@ Methods of collecting the metrics are
 3. Log
 4. Trace
  
+## Install Prometheus on Linux Ububtu
+
+- Download the installer - https://prometheus.io/download
+- change the Operating system to ubuntu and the correct architecture
+- Right click the image and copy the public download url
+- Use wget to download it
+- Prometheus needs user and group
+  - Create group - sudo groupadd --system prometheus
+  - Create User and add the user to the group - sudo useradd -s /sbin/nologin/ --system -g prometheus prometheus
+- Create directory for prometheus - sudo mkdir /var/lib/prometheus
+- Create repective rules diectory
+  - sudo mkdir -p /etc/prometheus/rules
+  - sudo mkdir -p /etc/prometheus/rules.s
+  - sudo mkdir -p /etc/prometheus/files_sd
+
+- Unzip the installer downloaded in step 1 - sudo tar xvf installer name
+- change directory to the unzip foler
+- Move the prometheus and promtool folders to user bin directory - sudo mv prometheus promtool /usr/local/bin/
+- Verify that the prometheus is accessible by checking the version - prometheus --version
+- Move the premetheus yaml file to /etc/prometheus/ folder - sudo mv prometheus.yaml /etc/prometheus/prometheus.yaml
+- Create the service file
+```
+sudo tee /etc/systemd/system/prometheus.service<<EOF
+[Unit]
+Description=Prometheus
+Documentation=https://prometheus.io/docs/introduction/overview/
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=prometheus
+Group=prometheus
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStart=/usr/local/bin/prometheus \
+  --config.file=/etc/prometheus/prometheus.yml \
+  --storage.tsdb.path=/var/lib/prometheus \
+  --web.console.templates=/etc/prometheus/consoles \
+  --web.console.libraries=/etc/prometheus/console_libraries \
+  --web.listen-address=0.0.0.0:9090 \
+  --web.external-url=
+
+SyslogIdentifier=prometheus
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF>>
+```
+
+- Make prometheus user owner of all folder and file 
+  - sudo chown -R prometheus:prometheus /etc/prometheus
+  - sudo chown -R prometheus:prometheus /etc/prometheus/*
+  - sudo chown -R 775 /etc/prometheus
+  - sudo chown -R 775 /etc/prometheus/*
+  - sudo chown -R prometheus:prometheus /var/lib/prometheus
+  - sudo chown -R prometheus:prometheus /var/lib/prometheus/*
+
+- Reload the daemon - sudo systemctl daemon-reload
+- start the service - sudo systemctl start prometheus
+- Check Prometheus status - sudo systemctl status prometheus
+- Lunch the prometheus on browser - VMIP:9090
+
