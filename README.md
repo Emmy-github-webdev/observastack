@@ -109,8 +109,8 @@ set -e
 # Prometheus installation
 # ============================================================
 
-PROMETHEUS_VERSION="3.5.0"
-PROMETHEUS_URL="PROMETHEUS_URL"
+PROMETHEUS_VERSION="3.14.0-rc.0"
+PROMETHEUS_URL="https://github.com/prometheus/prometheus/releases/download/v3.14.0-rc.0/prometheus-3.14.0-rc.0.linux-amd64.tar.gz"
 
 INSTALL_DIR="/tmp/prometheus-install"
 PROMETHEUS_DIR="/etc/prometheus"
@@ -318,7 +318,7 @@ set -e
 # Node Exporter installation
 # ============================================================
 
-NODE_EXPORTER_URL="NODE_EXPORTER_URL"
+NODE_EXPORTER_URL="https://github.com/prometheus/node_exporter/releases/download/v1.12.1/node_exporter-1.12.1.linux-amd64.tar.gz"
 
 INSTALL_DIR="/tmp/node-exporter-install"
 
