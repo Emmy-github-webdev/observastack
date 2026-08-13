@@ -458,6 +458,50 @@ echo "Node Exporter installation completed successfully."
   - Save the config file
 - Restart prometheus: 
   - sudo systemctl stop prometheus
-  - sudo systemctl start prometeheus
+  - sudo systemctl start prometheus
 - Relunch your prometheus on browser
 - Click on the status and you should see target server/endpoint
+
+## Run node exporter as a service
+
+In the above section, we have to start the node exporter and if the terminal is closed, the node exporter will stop. In order to keep running, we have to run it as a service.
+
+- Create group - sudo groupadd --system prometheus
+- Create User and add the user to the group - sudo useradd -s /sbin/nologin --system -g prometheus prometheus
+- Create a note file - _sudo mkdir -p /var/lib/node_
+- Move the node_exporter (from the unzipped node_exporter downloaded earlier) folder to /var/lib/node_
+- Update the service file
+  - open the service file: sudo vim /etc/systemd/system/node.service
+  - add the content below
+
+```
+[Unit]
+Description=Prometheus Node Exporter
+Documentation=https://prometheus.io/docs/introduction/overview/
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=prometheus
+Group=prometheus
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStart=/var/lib/node/node_exporter
+
+SyslogIdentifier=prometheus_node_exporter
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+- Save the file
+- Make the user owner of the node folder/files: 
+  - sudo chown -R prometheus:prometheus /var/lib/node
+  - sudo chown -R prometheus:prometheus /var/lib/node/*
+- Provide the use read amd write access
+  - sudo chmod -R 775 /var/lib/node
+  - sudo chmod -R 775 /var/lib/node/*
+- Reload the system daemon: sudo systemctl daemon-reload
+- Enable node service: sudo systemctl enable node
+- Start the node service: sudo systemctl start node
+- Check the status: sudo systemctl status node
