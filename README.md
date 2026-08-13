@@ -55,7 +55,7 @@ Methods of collecting the metrics are
 - change directory to the unzip foler
 - Move the prometheus and promtool folders to user bin directory - sudo mv prometheus promtool /usr/local/bin/
 - Verify that the prometheus is accessible by checking the version - prometheus --version
-- Move the premetheus yaml file to /etc/prometheus/ folder - sudo mv prometheus.yaml /etc/prometheus/prometheus.yaml
+- Move the premetheus yml file to /etc/prometheus/ folder - sudo mv prometheus.yml /etc/prometheus/prometheus.yml
 - Create the service file
 ```
 sudo tee /etc/systemd/system/prometheus.service<<EOF
@@ -442,3 +442,22 @@ echo ""
 echo "Node Exporter installation completed successfully."
 ```
 
+## Configure Prometheus to scrape metrics from application server
+- Lunch the prometheus server
+- Note that my yml file location is - /etc/prometheus/prometheus.yml
+- Update the prometheus.yml with the node exporter installed. Each time you have node exporter install, you have to do this. 
+  - _sudo vim prometheus.yml_
+  - Go inside the scrape_configs:
+  - Add the job below
+
+  ```
+  - job_name: 'application_server'
+    static_configs:
+    - targets: ['node_exporter_server_private_or_public_ip:9100'] # Depending if they are on the same or different network.
+  ```
+  - Save the config file
+- Restart prometheus: 
+  - sudo systemctl stop prometheus
+  - sudo systemctl start prometeheus
+- Relunch your prometheus on browser
+- Click on the status and you should see target server/endpoint
