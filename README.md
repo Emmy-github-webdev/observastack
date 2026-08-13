@@ -505,3 +505,27 @@ WantedBy=multi-user.target
 - Enable node service: sudo systemctl enable node
 - Start the node service: sudo systemctl start node
 - Check the status: sudo systemctl status node
+
+## Data Model
+In Prometheus, data is storedas time series, which means that we have a metric and there is a timestamp, a linux timestamp attached to it. 
+
+### Types of Data Types
+- Scalar - float, string
+  _Store sample_
+  ```
+  prometheus_http_requests_total{code="200", job="prometheus"}
+  ```
+  _Query sample_
+  ```
+  prometheus_http_requests_total{code=~"2.*", job="prometheus"}
+  ```
+
+- Instant vector - selects a set of time series and a single sample value for any timestap. Meaning, only a metric name is specified
+
+- Range Vector - Similar to range vectors except they select a range of samples.
+
+- Example
+  - Open metric from node exporter in another tab of your browser
+  - Pick one metrics, e.g _node_network_transmit_err_total_
+  - Go to the prometheus and search it. It should show metrics.
+  - To apply a range:  _node_network_transmit_err_total[5m]_
