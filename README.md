@@ -44,7 +44,7 @@ Methods of collecting the metrics are
 - Use wget to download it
 - Prometheus needs user and group
   - Create group - sudo groupadd --system prometheus
-  - Create User and add the user to the group - sudo useradd -s /sbin/nologin/ --system -g prometheus prometheus
+  - Create User and add the user to the group - sudo useradd -s /sbin/nologin --system -g prometheus prometheus
 - Create directory for prometheus - sudo mkdir /var/lib/prometheus
 - Create repective rules diectory
   - sudo mkdir -p /etc/prometheus/rules
@@ -98,4 +98,36 @@ EOF>>
 - start the service - sudo systemctl start prometheus
 - Check Prometheus status - sudo systemctl status prometheus
 - Lunch the prometheus on browser - VMIP:9090
+
+## Data Collection
+Exporter is used to get metrics from a Linux server, Database, IoT, Amazon clouwatch, HAProxy by installing the exporter in the target or source of the metrics. The prometheus pull the metrics from the exporter.
+
+### Scraping
+Scraping is the process of connecting to an exporter and pulling the metrics into Prometheus is called scraping. Scraping can be configured in the prometheus config file. By default, prometheus connect to the exporters and pulls the metrics in every 15 seconds and store it in prometheus.
+
+<br>
+
+A push gateway is a component of prometheus which acts as temporary storage, where application can send metrics to it. It has a built in exporter. So prometheus can scrap the matrics from push gateway. Applications push metrics to push gateway and prometheus scrap the metrics from push gateway.
+
+## Types of Exporter
+1. _Node Exporter_: is an official(part of prometheus project) prometheus exporter for collecting metrics that exposed by Unix-based kernels e.g Linux and Ubuntu. Example of metrics that can be collected by Node exporter includes
+  - CPU usage
+  - Disk usage
+  - Memmory usage
+  - Network I/O
+
+### Setup Node Exporter
+_Note that you do not install node exporter on the same machine where prometheus is installed, unless you want to collect metrics from the same machine with prometheus installed_
+
+Also consider the following configuration 
+  - on Node Server
+    - Security: 
+      - Enable port 22 TCP. Select the sources as needed (Specific IP, all IPs, etc)
+      - port 9100: Node export listens on prot 9100. Source is the security group ID of the prometheus server.
+- Download node exporter installer from - https://prometheus.io/download
+- Right click the installer and cpoy the download link
+- Use wget to dowload the installer
+- Unzip the downloaded node exporter
+- change directory to the unzipped node exporter
+- Run it - ./node_exporter
 
