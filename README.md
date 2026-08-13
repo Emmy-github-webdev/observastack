@@ -99,6 +99,183 @@ EOF>>
 - Check Prometheus status - sudo systemctl status prometheus
 - Lunch the prometheus on browser - VMIP:9090
 
+### Using UserData for EC2
+```
+#!/bin/bash
+
+set -e
+
+# ============================================================
+# Prometheus installation
+# ============================================================
+
+PROMETHEUS_VERSION="3.5.0"
+PROMETHEUS_URL="PROMETHEUS_URL"
+
+INSTALL_DIR="/tmp/prometheus-install"
+PROMETHEUS_DIR="/etc/prometheus"
+DATA_DIR="/var/lib/prometheus"
+
+echo "Starting Prometheus installation..."
+
+# ------------------------------------------------------------
+# Install required packages
+# ------------------------------------------------------------
+
+apt-get update
+apt-get install -y wget tar
+
+# ------------------------------------------------------------
+# Create Prometheus group and user
+# ------------------------------------------------------------
+
+if ! getent group prometheus > /dev/null; then
+    groupadd --system prometheus
+fi
+
+if ! id prometheus > /dev/null 2>&1; then
+    useradd \
+        --system \
+        --no-create-home \
+        --shell /usr/sbin/nologin \
+        --gid prometheus \
+        prometheus
+fi
+
+# ------------------------------------------------------------
+# Create directories
+# ------------------------------------------------------------
+
+mkdir -p "$INSTALL_DIR"
+mkdir -p "$PROMETHEUS_DIR"
+mkdir -p "$PROMETHEUS_DIR/rules"
+mkdir -p "$PROMETHEUS_DIR/rules.d"
+mkdir -p "$PROMETHEUS_DIR/files_sd"
+mkdir -p "$DATA_DIR"
+
+# ------------------------------------------------------------
+# Download Prometheus
+# ------------------------------------------------------------
+
+echo "Downloading Prometheus..."
+
+wget -O "$INSTALL_DIR/prometheus.tar.gz" "$PROMETHEUS_URL"
+
+# ------------------------------------------------------------
+# Extract Prometheus
+# ------------------------------------------------------------
+
+echo "Extracting Prometheus..."
+
+tar -xvf "$INSTALL_DIR/prometheus.tar.gz" -C "$INSTALL_DIR"
+
+EXTRACTED_DIR=$(find "$INSTALL_DIR" -maxdepth 1 -type d -name "prometheus-*" | head -n 1)
+
+if [ -z "$EXTRACTED_DIR" ]; then
+    echo "ERROR: Prometheus extraction directory not found."
+    exit 1
+fi
+
+# ------------------------------------------------------------
+# Install Prometheus binaries
+# ------------------------------------------------------------
+
+echo "Installing Prometheus binaries..."
+
+install -m 0755 "$EXTRACTED_DIR/prometheus" /usr/local/bin/prometheus
+install -m 0755 "$EXTRACTED_DIR/promtool" /usr/local/bin/promtool
+
+# ------------------------------------------------------------
+# Install Prometheus configuration and console files
+# ------------------------------------------------------------
+
+echo "Installing Prometheus configuration..."
+
+cp "$EXTRACTED_DIR/prometheus.yml" "$PROMETHEUS_DIR/prometheus.yml"
+
+if [ -d "$EXTRACTED_DIR/consoles" ]; then
+    cp -r "$EXTRACTED_DIR/consoles" "$PROMETHEUS_DIR/"
+fi
+
+if [ -d "$EXTRACTED_DIR/console_libraries" ]; then
+    cp -r "$EXTRACTED_DIR/console_libraries" "$PROMETHEUS_DIR/"
+fi
+
+# ------------------------------------------------------------
+# Set ownership
+# ------------------------------------------------------------
+
+echo "Setting permissions..."
+
+chown -R prometheus:prometheus "$PROMETHEUS_DIR"
+chown -R prometheus:prometheus "$DATA_DIR"
+
+chmod 755 "$PROMETHEUS_DIR"
+chmod 755 "$DATA_DIR"
+
+# ------------------------------------------------------------
+# Create systemd service
+# ------------------------------------------------------------
+
+echo "Creating Prometheus systemd service..."
+
+cat > /etc/systemd/system/prometheus.service <<'EOF'
+[Unit]
+Description=Prometheus Monitoring System
+Documentation=https://prometheus.io/docs/introduction/overview/
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=prometheus
+Group=prometheus
+
+ExecReload=/bin/kill -HUP \$MAINPID
+
+ExecStart=/usr/local/bin/prometheus \
+  --config.file=/etc/prometheus/prometheus.yml \
+  --storage.tsdb.path=/var/lib/prometheus \
+  --web.console.templates=/etc/prometheus/consoles \
+  --web.console.libraries=/etc/prometheus/console_libraries \
+  --web.listen-address=0.0.0.0:9090
+
+Restart=always
+RestartSec=5
+
+SyslogIdentifier=prometheus
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# ------------------------------------------------------------
+# Reload systemd
+# ------------------------------------------------------------
+
+systemctl daemon-reload
+
+# ------------------------------------------------------------
+# Enable and start Prometheus
+# ------------------------------------------------------------
+
+systemctl enable prometheus
+systemctl start prometheus
+
+# ------------------------------------------------------------
+# Verify installation
+# ------------------------------------------------------------
+
+echo "Prometheus version:"
+/usr/local/bin/prometheus --version
+
+echo ""
+echo "Prometheus service status:"
+systemctl --no-pager status prometheus
+
+echo ""
+echo "Prometheus installation completed successfully."
+```
 ## Data Collection
 Exporter is used to get metrics from a Linux server, Database, IoT, Amazon clouwatch, HAProxy by installing the exporter in the target or source of the metrics. The prometheus pull the metrics from the exporter.
 
@@ -130,4 +307,138 @@ Also consider the following configuration
 - Unzip the downloaded node exporter
 - change directory to the unzipped node exporter
 - Run it - ./node_exporter
+
+### Using UserData
+```
+#!/bin/bash
+
+set -e
+
+# ============================================================
+# Node Exporter installation
+# ============================================================
+
+NODE_EXPORTER_URL="NODE_EXPORTER_URL"
+
+INSTALL_DIR="/tmp/node-exporter-install"
+
+echo "Starting Node Exporter installation..."
+
+# ------------------------------------------------------------
+# Install required packages
+# ------------------------------------------------------------
+
+apt-get update
+apt-get install -y wget tar
+
+# ------------------------------------------------------------
+# Create Node Exporter user
+# ------------------------------------------------------------
+
+if ! id node_exporter > /dev/null 2>&1; then
+    useradd \
+        --system \
+        --no-create-home \
+        --shell /usr/sbin/nologin \
+        node_exporter
+fi
+
+# ------------------------------------------------------------
+# Create temporary installation directory
+# ------------------------------------------------------------
+
+mkdir -p "$INSTALL_DIR"
+
+# ------------------------------------------------------------
+# Download Node Exporter
+# ------------------------------------------------------------
+
+echo "Downloading Node Exporter..."
+
+wget -O "$INSTALL_DIR/node_exporter.tar.gz" "$NODE_EXPORTER_URL"
+
+# ------------------------------------------------------------
+# Extract Node Exporter
+# ------------------------------------------------------------
+
+echo "Extracting Node Exporter..."
+
+tar -xvf "$INSTALL_DIR/node_exporter.tar.gz" -C "$INSTALL_DIR"
+
+EXTRACTED_DIR=$(find "$INSTALL_DIR" -maxdepth 1 -type d -name "node_exporter-*" | head -n 1)
+
+if [ -z "$EXTRACTED_DIR" ]; then
+    echo "ERROR: Node Exporter extraction directory not found."
+    exit 1
+fi
+
+# ------------------------------------------------------------
+# Install Node Exporter binary
+# ------------------------------------------------------------
+
+echo "Installing Node Exporter..."
+
+install -m 0755 \
+    "$EXTRACTED_DIR/node_exporter" \
+    /usr/local/bin/node_exporter
+
+chown node_exporter:node_exporter /usr/local/bin/node_exporter
+
+# ------------------------------------------------------------
+# Create systemd service
+# ------------------------------------------------------------
+
+echo "Creating Node Exporter systemd service..."
+
+cat > /etc/systemd/system/node_exporter.service <<'EOF'
+[Unit]
+Description=Node Exporter
+Documentation=https://prometheus.io/docs/guides/node-exporter/
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=node_exporter
+Group=node_exporter
+
+ExecStart=/usr/local/bin/node_exporter
+
+Restart=always
+RestartSec=5
+
+SyslogIdentifier=node_exporter
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# ------------------------------------------------------------
+# Reload systemd
+# ------------------------------------------------------------
+
+systemctl daemon-reload
+
+# ------------------------------------------------------------
+# Enable and start Node Exporter
+# ------------------------------------------------------------
+
+systemctl enable node_exporter
+systemctl start node_exporter
+
+# ------------------------------------------------------------
+# Verify installation
+# ------------------------------------------------------------
+
+echo ""
+echo "Node Exporter version:"
+/usr/local/bin/node_exporter --version
+
+echo ""
+echo "Node Exporter service status:"
+systemctl --no-pager status node_exporter
+
+echo ""
+echo "Node Exporter installation completed successfully."
+```
 
