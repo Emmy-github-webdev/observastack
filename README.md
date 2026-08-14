@@ -591,3 +591,24 @@ Note:
 - _min_over_time(<range vector>)_: returns the minimum of items in a range vector
 - _max_over_time(<range vector>)_: returns the maximum of items in a range vector
 - _count_over_time(<range vector>)_: returns the count of items in a range vector
+
+## Install Grafana
+_On Ubuntu_
+- Install the needed packages
+  - adduser
+  - libfontconfigl
+  - musl
+  - _sudo apt-get install -y adduser libfontconfigl musl_
+- Install deb package using wget- [Download Grafana](https://grafana.com/grafana/download)
+- sudo dpkg -i grafana _x_x_x_amd64.deb
+- Reload the service - sudo systemctl daemon-reload
+- Enable grafana server - sudo systemctl enable grafana-server
+- Start grafana server - sudo systemctl start grafana-server
+- Check status grafana server - sudo systemctl status grafana-server
+- Lunch on browser - ip:3000
+
+## Configure grafana
+- To make any changes, go to /etc/grafana.
+- It's advisable not to make changes to the grafana.ini file directly. Make a copy for example: sudo cp grafana.ini custom.ini
+- Open the grafana.ini: sudo vim grafana.ini
+- Remove the semi-colon in the log line to make it effective
