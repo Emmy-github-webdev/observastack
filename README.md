@@ -529,3 +529,35 @@ In Prometheus, data is storedas time series, which means that we have a metric a
   - Pick one metrics, e.g _node_network_transmit_err_total_
   - Go to the prometheus and search it. It should show metrics.
   - To apply a range:  _node_network_transmit_err_total[5m]_
+
+## Aggregation Operators
+Try the following in prometheus
+- node_cpu_seconds_total
+- sum - sum(node_cpu_seconds_total)
+- sum by - sum(node_cpu_seconds_total) by (mode)
+- Sum without - sum(node_cpu_seconds_total) without (mode)
+- topk (Top largest value) - topk{3, sum(node_cpu_seconds_total) without (mode)}
+- bottomk (Bottom lowest value) - bottomk{3, sum(node_cpu_seconds_total) without (mode)}
+- group - group(node_cpu_seconds_total)
+- group by mode - group(node_cpu_seconds_total) by (mode)
+- Average - avg(node_cpu_seconds_total) by (mode)
+- topk{3, avg(node_cpu_seconds_total) by (mode) by (mode)}
+
+## Time offsets
+Note:
+1. d = day
+2. h = hour
+3. m = minutes
+4. ms = miliseconds
+5. w = week
+6. y = year
+
+- prometheus_http_requests_total offset 10m
+- Apply by code - group(prometheus_http_requests_total) by (code)
+- Average - avg(prometheus_http_requests_total) by (code)
+- avg(prometheus_http_requests_total ofset 8m) by (code)
+
+## Functions in prometheus
+
+
+
