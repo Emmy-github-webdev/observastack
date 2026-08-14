@@ -765,3 +765,14 @@ Dashboard dsign can be for different purposes
 |                               |  |                                | |                                  |
 ---------------------------------  ---------------------------------- ------------------------------------
 ```
+
+## Connecting Grafana to prometheus
+- Login to grafana 
+- In the homepage, click the configuration (Like setting icon)
+- Click on the Datasource option
+- Click on Add button
+- Select prometheus
+- HTTP
+  - URL - Add the promethus URL
+- Auth
+  - if you enable authentication in prometheus, you trun ot on here and provide the authentication details
