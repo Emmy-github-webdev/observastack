@@ -558,6 +558,36 @@ Note:
 - avg(prometheus_http_requests_total ofset 8m) by (code)
 
 ## Functions in prometheus
+- _absent(<Instant Vector>)_: Checks if an instant vector has any members returns an empty vector if parameter has elements
+  - absent(node_cpu_seconds_total)
 
+- _absent_over_time(<range vector>)_: Checks if an range vector has any members retruns an empty vector parameter has elements
+  - absent_over_time(node_cpu_seconds_total[1h])
+  - absent_over_time(node_cpu_seconds_total{cpu="xrff"}[1h])
 
+- _abs(<Instant vector>)_: Converts all values to their absolute values. e.g -5 to 5
+- _ceil(<Instant vector>)_: Converts all values to their nearest lager integer. e.g 1.6 to 2
+- _floor(<Instant vector>)_: Converts all values to their nearest smaller integer. e.g 1.6 to 1
+- _clamp(<Instant vector>, min, max)_
+  - _clamp_min(<Instant vector>, mi)_
+  - _clamp_max(<Instant vector>, max)_
+    - clamp_min(node_cpu_seconds_total, 300)
+    - clamp_max(node_cpu_seconds_total, 150000)
+    - clamp(node_cpu_seconds_total, 300, 150000)
 
+- _day_of_month(<instant vector>)_: For every UTC time returns day of month 1..31
+- _day_of_week(<instant vector>)_: For every UTC time returns day of week 1..7
+- _delta(<instant vector>)_: Can only be used with Gauges
+- _idelta(<Range vector>)_: Returns the difference between first and last items
+- _log2(<Instant Vector>)_: returns binary logarithm of each scaler value
+- _log10(<Instant Vector>)_: returns dcimal logarithm of each scaler value
+- _ln(<Instant Vector>)_: returns neutral logarithm of each scaler value
+- _sort(<Instant Vector>)_: Sort elements in ascending order
+- _sort_desc(<Instant Vector>)_: Sort elements in decending order
+- _time(<Instant Vector>)_: Returns a near-current time stamp
+- _timestamp(<Instant Vector>)_: Returns the time stamp of each time series (element)
+- _avg_over_time(<range vector>)_: returns the average of items in a range vector
+- _sum_over_time(<range vector>)_: returns the sum of items in a range vector
+- _min_over_time(<range vector>)_: returns the minimum of items in a range vector
+- _max_over_time(<range vector>)_: returns the maximum of items in a range vector
+- _count_over_time(<range vector>)_: returns the count of items in a range vector
