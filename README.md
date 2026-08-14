@@ -776,3 +776,23 @@ Dashboard dsign can be for different purposes
   - URL - Add the promethus URL
 - Auth
   - if you enable authentication in prometheus, you trun ot on here and provide the authentication details
+
+## Creating and managing Dashbaord in Grafana
+After connecting Prometheus, you can create dashboard
+- In grafana console, click dashboard
+- Select create Dashboard or new dashbord
+- Add a folder name: eg _tech Team_
+- Click create
+- Click save
+- provide the Title: e.g ShowHub, and folder: tech team or dashboard
+- save
+
+## CReate Panel
+- Click add visualization
+- Click and select the type of visualization you want. eg Time series
+- On panel
+  - title, add the title for example - Response Time
+- At the bottom is the Query
+  - You can either use code or query builder
+- save and apply
+- Save the dashboard.
