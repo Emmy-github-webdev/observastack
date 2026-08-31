@@ -787,7 +787,7 @@ After connecting Prometheus, you can create dashboard
 - provide the Title: e.g ShowHub, and folder: tech team or dashboard
 - save
 
-## CReate Panel
+## Create Panel
 - Click add visualization
 - Click and select the type of visualization you want. eg Time series
 - On panel
@@ -796,3 +796,61 @@ After connecting Prometheus, you can create dashboard
   - You can either use code or query builder
 - save and apply
 - Save the dashboard.
+
+## ALerts, Notifications,and Annotations in Grafana
+Alerts are raised when a defined rule is violated. Rules are defined as queries and are checked by alert manager.
+Alerts are sent to notification policies which decides if the notification can be send out or not to contact points (Emails. etc).
+
+### Setup Alert
+- Go to Grafana console
+- Click Alerting => Alert rules
+- To create a new alert rule, click _New alert rule_
+- Enter the alert name
+- Define the query and alert condition
+- specify the required conditions
+- Notification Plocies and contact Points
+
+## Grafana Loki - Log Aggregation and Analysis
+Loki is an opn-source log aggregation system designed to work seamlessly with Grafana.
+
+### Features of Grafana Loki
+1. _Log Aggregation_: Collecting, storing, and querying large amount of logs.
+2. _Prometheus-inspired design_: Uses similar concepts and query language as prometheus
+3. _Integrate with Grafana_: Users can visualize log data in grafana dashboards, allowing for seamless correlation of log events with other observability metrics.
+4. _Distributed Architecture_: It can scale horizontally
+5. _Cost-effective storage_: Chunk-based storage mechanism.
+
+
+### How it works
+
+Your backend service will produce log files and store them somewhere on a disk, for example in a folder called /var/log/ in Linux machine. promtail discover the logs and push it to loki, and loki finally ingest it to grafana.
+<br>
+
+Grafana Loki is a log aggregation system designed to collect, store, and query logs from applications and infrastructure. It is commonly used together with Grafana, which provides the user interface for searching and visualizing those logs.
+
+A typical Loki setup looks like this:
+
+```
+Backend Service
+      │
+      │ writes logs
+      ▼
+/var/log/application.log
+      │
+      │ discovered and collected by
+      ▼
+Grafana Alloy / Promtail (Promtail is EOL march, 2026. Replaced with Grafana Alloy)
+      │
+      │ pushes logs
+      ▼
+    Loki
+      │
+      │ stores and indexes log metadata
+      ▼
+Object Storage / Local Storage
+      │
+      │ queried through
+      ▼
+   Grafana
+
+```
