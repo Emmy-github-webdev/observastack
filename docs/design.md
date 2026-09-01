@@ -3,6 +3,7 @@
 ## 1. Overview
 
 An Enterprise Cloud Observability & SRE Platform is a production-oriented enterprise cloud observability platform designed to provide a unified view/monitoring of infrastructure, Kubernetes workloads, microservices, APIs, logs, traces, databases, and business-critical services.
+---
 
 ## 2. The problem to be solved
 
@@ -24,6 +25,7 @@ This enables engineering teams to answer four critical operational questions::
 - _what is the customer impact?”_
 
 Enterprise Cloud Observability & SRE Platform brings all of that into a single observability architecture.
+---
 
 ## 3. High-level architecture
 Enterprise Cloud Observability Platform is build around four observability pillars:
@@ -76,6 +78,7 @@ Enterprise Cloud Observability Platform is build around four observability pilla
              │ AlertMgr│      │  SLI/SLO │      │ Integration│
              └─────────┘      └──────────┘      └────────────┘
 ```
+---
 
 ## 4. Technology stack
 
@@ -101,6 +104,7 @@ Enterprise Cloud Observability Platform is build around four observability pilla
 | Dashboards     | **Grafana**                 |
 | SRE            | **SLI/SLO/Error Budgets**   |
 
+---
 
 ## 5. The killer feature: correlation
 
@@ -151,6 +155,7 @@ RDS CPU / connections
   ↓
 Related logs
 ```
+---
 
 ## 6. Build a realistic microservices application
 
@@ -181,6 +186,7 @@ Each service should expose:
 /metrics
 ```
 And emit structured JSON logs. Then instrument the services with OpenTelemetry.
+---
 
 ## 7. Infrastructure architecture
 
@@ -228,6 +234,7 @@ EKS
 ├── OpenTelemetry Collector
 └── Alertmanager
 ```
+---
 
 ## 8. GitOps architecture
 
@@ -284,6 +291,7 @@ GitHub Actions
            ▼
           EKS
 ```
+---
 
 ## 9. SRE layer
 
@@ -302,6 +310,8 @@ GitHub Actions
   ```
   5xx requests / total requests
   ```
+  ---
+
   ### SLO
   For example
 
@@ -329,6 +339,7 @@ GitHub Actions
   Error Budget:     40%
   Status:           Healthy
   ```
+---
 
 ## 10. Alerting
 
@@ -369,6 +380,7 @@ GitHub Actions
   Storage < 20%
   High read/write latency
   ```
+---
 
 ## 11. Incident simulation
 
@@ -398,6 +410,7 @@ Then document:
 - _Root cause_: Database connection saturation.
 - _Resolution_: Increased connection pool and optimized query.
 - _Prevention_: Added database connection saturation alert.
+---
 
 ## 12. Observability dashboard
 
@@ -436,6 +449,7 @@ Then document:
 │                                                              │
 └──────────────────────────────────────────────────────────────┘
 ```
+---
 
 ## 13. Multi-environment support
 
@@ -453,6 +467,7 @@ Then document:
                  ▼
         Central Observability
 ```
+---
 
 ## 14. Security
 
@@ -488,6 +503,7 @@ Build
    ↓
 Deploy
 ```
+---
 
 ## 15. Disaster recovery
 
@@ -516,6 +532,7 @@ RPO: 1 hour
 RTO: 2 hours
 ```
 Then actually test restoration.
+---
 
 ## 16. Cost observability
 
@@ -544,6 +561,7 @@ Service
  ↓
 Infrastructure
 ```
+---
 
 ## 17. Repository Structure
 
@@ -616,6 +634,7 @@ observastack/
 └── .github/
     └── workflows/
 ```
+---
 
 ## 18. Conclusion
 
@@ -679,3 +698,4 @@ Designed and implemented an enterprise-grade cloud observability platform for Ku
 ### Progression:
 
 _Architecture → requirements → repo design → Terraform → EKS → microservices → OpenTelemetry → Prometheus/Grafana → Loki/Tempo → SLOs → alerting → incident simulation → security → DR → documentation → portfolio presentation._
+---
