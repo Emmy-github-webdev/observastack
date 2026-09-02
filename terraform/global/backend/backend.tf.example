@@ -1,0 +1,8 @@
+# This file is an example only.
+# Environment root modules should use a partial S3 backend configuration.
+
+terraform {
+  backend "s3" {
+    use_lockfile = true
+  }
+}
