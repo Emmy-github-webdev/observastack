@@ -1,0 +1,59 @@
+name: GitOps Validation
+
+on:
+  pull_request:
+    paths:
+      - "gitops/**"
+      - "kubernetes/**"
+      - ".github/workflows/gitops-validation.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "gitops/**"
+      - "kubernetes/**"
+      - ".github/workflows/gitops-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  yaml:
+    name: YAML validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Install yamllint
+        run: python -m pip install --upgrade yamllint
+
+      - name: Validate YAML
+        shell: bash
+        run: |
+          set -euo pipefail
+          find gitops kubernetes -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 |
+            xargs -0 -r yamllint -d relaxed
+
+  kubernetes:
+    name: Kubernetes manifest validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Install kubeconform
+        run: |
+          curl -fsSL -o /tmp/kubeconform.tar.gz \
+            https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz
+          tar -xzf /tmp/kubeconform.tar.gz -C /tmp
+          sudo mv /tmp/kubeconform /usr/local/bin/kubeconform
+
+      - name: Validate Kubernetes manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find kubernetes gitops -type f \( -name '*.yaml' -o -name '*.yml' \) | grep -q .; then
+            find kubernetes gitops -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 |
+              xargs -0 kubeconform -strict -ignore-missing-schemas
+          else
+            echo "No Kubernetes YAML files found yet."
+          fi

@@ -1,0 +1,70 @@
+name: Services CI
+
+on:
+  pull_request:
+    paths:
+      - "services/**"
+      - "tests/services/**"
+      - ".github/workflows/services-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "services/**"
+      - "tests/services/**"
+      - ".github/workflows/services-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  services:
+    name: Validate services
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - user-service
+          - product-service
+          - order-service
+          - payment-service
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Detect service
+        id: changed
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" | grep -q "^services/${{ matrix.service }}/"; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate service structure
+        if: steps.changed.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d "services/${{ matrix.service }}"
+          echo "Validating services/${{ matrix.service }}"
+
+          if [[ -f "services/${{ matrix.service }}/pom.xml" ]]; then
+            docker run --rm \
+              -v "$PWD/services/${{ matrix.service }}:/workspace" \
+              -w /workspace \
+              maven:3.9-eclipse-temurin-21 \
+              mvn -B test
+          elif [[ -f "services/${{ matrix.service }}/package.json" ]]; then
+            docker run --rm \
+              -v "$PWD/services/${{ matrix.service }}:/workspace" \
+              -w /workspace \
+              node:24-alpine \
+              sh -c "npm ci && npm test"
+          else
+            echo "No supported build descriptor found yet; structural validation passed."
+          fi

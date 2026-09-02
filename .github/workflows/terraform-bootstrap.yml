@@ -1,0 +1,173 @@
+name: Terraform Backend Bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment whose backend path should be initialized"
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+        default: dev
+      force_reconcile:
+        description: "Re-apply bucket controls even if they already exist"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: terraform-backend-bootstrap
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  TERRAFORM_STATE_BUCKET: ${{ vars.TERRAFORM_STATE_BUCKET }}
+  TERRAFORM_STATE_PREFIX: observastack
+  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+
+jobs:
+  bootstrap:
+    name: Bootstrap Terraform S3 backend
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Validate bootstrap configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          : "${AWS_REGION:?Repository variable AWS_REGION is required}"
+          : "${TERRAFORM_STATE_BUCKET:?Repository variable TERRAFORM_STATE_BUCKET is required}"
+
+          if [[ ! "${TERRAFORM_STATE_BUCKET}" =~ ^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$ ]]; then
+            echo "Invalid S3 bucket name: ${TERRAFORM_STATE_BUCKET}"
+            exit 1
+          fi
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: ${{ vars.TERRAFORM_BOOTSTRAP_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: github-actions-bootstrap-${{ github.run_id }}
+          allowed-account-ids: ${{ env.AWS_ACCOUNT_ID }}
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Bootstrap S3 state bucket
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          bucket="${TERRAFORM_STATE_BUCKET}"
+          region="${AWS_REGION}"
+
+          if aws s3api head-bucket --bucket "$bucket" >/dev/null 2>&1; then
+            echo "State bucket already exists: $bucket"
+          else
+            echo "Creating state bucket: $bucket"
+            if [[ "$region" == "us-east-1" ]]; then
+              aws s3api create-bucket --bucket "$bucket" --region "$region"
+            else
+              aws s3api create-bucket \
+                --bucket "$bucket" \
+                --region "$region" \
+                --create-bucket-configuration LocationConstraint="$region"
+            fi
+          fi
+
+      - name: Enable bucket versioning
+        run: |
+          aws s3api put-bucket-versioning \
+            --bucket "${TERRAFORM_STATE_BUCKET}" \
+            --versioning-configuration Status=Enabled
+
+      - name: Block public access
+        run: |
+          aws s3api put-public-access-block \
+            --bucket "${TERRAFORM_STATE_BUCKET}" \
+            --public-access-block-configuration \
+              BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+
+      - name: Enforce bucket ownership
+        run: |
+          aws s3api put-bucket-ownership-controls \
+            --bucket "${TERRAFORM_STATE_BUCKET}" \
+            --ownership-controls 'Rules=[{ObjectOwnership=BucketOwnerEnforced}]'
+
+      - name: Enable default encryption
+        run: |
+          aws s3api put-bucket-encryption \
+            --bucket "${TERRAFORM_STATE_BUCKET}" \
+            --server-side-encryption-configuration '{
+              "Rules": [{
+                "ApplyServerSideEncryptionByDefault": {
+                  "SSEAlgorithm": "AES256"
+                },
+                "BucketKeyEnabled": true
+              }]
+            }'
+
+      - name: Deny insecure transport
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat > /tmp/bucket-policy.json <<EOF
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "DenyInsecureTransport",
+                "Effect": "Deny",
+                "Principal": "*",
+                "Action": "s3:*",
+                "Resource": [
+                  "arn:aws:s3:::${TERRAFORM_STATE_BUCKET}",
+                  "arn:aws:s3:::${TERRAFORM_STATE_BUCKET}/*"
+                ],
+                "Condition": {
+                  "Bool": {
+                    "aws:SecureTransport": "false"
+                  }
+                }
+              }
+            ]
+          }
+          EOF
+
+          aws s3api put-bucket-policy \
+            --bucket "${TERRAFORM_STATE_BUCKET}" \
+            --policy file:///tmp/bucket-policy.json
+
+      - name: Verify backend
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          aws s3api get-bucket-versioning \
+            --bucket "${TERRAFORM_STATE_BUCKET}"
+
+          aws s3api get-public-access-block \
+            --bucket "${TERRAFORM_STATE_BUCKET}"
+
+          aws s3api get-bucket-encryption \
+            --bucket "${TERRAFORM_STATE_BUCKET}"
+
+          echo "Terraform backend bucket is ready."
+          echo "State prefix: ${TERRAFORM_STATE_PREFIX}/"

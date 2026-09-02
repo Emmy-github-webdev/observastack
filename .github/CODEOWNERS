@@ -1,0 +1,22 @@
+# Default ownership
+* @Emmy-github-webdev/observastack-platform
+
+# Infrastructure
+/terraform/ @Emmy-github-webdev/observastack-platform
+/terraform/global/ @Emmy-github-webdev/observastack-platform
+/terraform/modules/ @Emmy-github-webdev/observastack-platform
+
+# Kubernetes and GitOps
+/kubernetes/ @Emmy-github-webdev/observastack-platform
+/gitops/ @Emmy-github-webdev/observastack-platform
+
+# Observability
+/observability/ @Emmy-github-webdev/observastack-platform
+/dashboards/ @Emmy-github-webdev/observastack-platform
+
+# Security
+/security/ @Emmy-github-webdev/observastack-security
+/.github/ @Emmy-github-webdev/observastack-platform
+
+# Application services
+/services/ @Emmy-github-webdev/observastack-engineering

@@ -1,0 +1,70 @@
+name: Observability Validation
+
+on:
+  pull_request:
+    paths:
+      - "observability/**"
+      - "kubernetes/observability/**"
+      - "gitops/observability/**"
+      - "dashboards/**"
+      - ".github/workflows/observability-validation.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "observability/**"
+      - "kubernetes/observability/**"
+      - "gitops/observability/**"
+      - "dashboards/**"
+      - ".github/workflows/observability-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  yaml:
+    name: Observability YAML validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Install yamllint
+        run: python -m pip install --upgrade yamllint
+
+      - name: Validate observability YAML
+        shell: bash
+        run: |
+          set -euo pipefail
+          paths=()
+          for dir in observability kubernetes/observability gitops/observability; do
+            [[ -d "$dir" ]] && paths+=("$dir")
+          done
+
+          if ((${#paths[@]} == 0)); then
+            echo "No observability directories found yet."
+            exit 0
+          fi
+
+          find "${paths[@]}" -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 |
+            xargs -0 -r yamllint -d relaxed
+
+  json:
+    name: Dashboard JSON validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Validate dashboard JSON
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -d dashboards ]]; then
+            find dashboards -type f -name '*.json' -print0 |
+              while IFS= read -r -d '' file; do
+                python -m json.tool "$file" >/dev/null
+                echo "Valid: $file"
+              done
+          else
+            echo "No dashboards directory found yet."
+          fi

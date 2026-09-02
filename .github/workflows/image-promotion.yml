@@ -1,0 +1,108 @@
+name: Image Promotion
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Service to promote"
+        required: true
+        type: choice
+        options:
+          - user-service
+          - product-service
+          - order-service
+          - payment-service
+      image_tag:
+        description: "Immutable Git SHA image tag in Dev ECR"
+        required: true
+        type: string
+      target:
+        description: "Promotion target"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  promote:
+    name: Promote ${{ inputs.service }} to ${{ inputs.target }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target }}
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Configure source AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: ${{ vars.DEV_RELEASE_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: image-promote-source-${{ github.run_id }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+
+      - name: Resolve source digest
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          digest="$(aws ecr describe-images \
+            --repository-name "${{ inputs.service }}" \
+            --image-ids imageTag="${{ inputs.image_tag }}" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)"
+
+          test "${digest}" != "None"
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure target AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: ${{ inputs.target == 'staging' && vars.STAGING_RELEASE_ROLE_ARN || vars.PRODUCTION_RELEASE_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: image-promote-target-${{ inputs.target }}-${{ github.run_id }}
+          allowed-account-ids: ${{ inputs.target == 'staging' && vars.STAGING_AWS_ACCOUNT_ID || vars.PRODUCTION_AWS_ACCOUNT_ID }}
+
+      - name: Login to target ECR
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          mask-password: true
+
+      - name: Promote immutable image
+        shell: bash
+        env:
+          SOURCE_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+          TARGET_ACCOUNT_ID: ${{ inputs.target == 'staging' && vars.STAGING_AWS_ACCOUNT_ID || vars.PRODUCTION_AWS_ACCOUNT_ID }}
+          SOURCE_REGION: ${{ vars.AWS_REGION }}
+          SERVICE: ${{ inputs.service }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          DIGEST: ${{ steps.source.outputs.digest }}
+        run: |
+          set -euo pipefail
+
+          source_registry="${SOURCE_ACCOUNT_ID}.dkr.ecr.${SOURCE_REGION}.amazonaws.com"
+          target_registry="${TARGET_ACCOUNT_ID}.dkr.ecr.${SOURCE_REGION}.amazonaws.com"
+
+          docker pull "${source_registry}/${SERVICE}:${IMAGE_TAG}"
+          docker tag "${source_registry}/${SERVICE}:${IMAGE_TAG}" "${target_registry}/${SERVICE}:${IMAGE_TAG}"
+          docker push "${target_registry}/${SERVICE}:${IMAGE_TAG}"
+
+          promoted_digest="$(aws ecr describe-images \
+            --repository-name "${SERVICE}" \
+            --image-ids imageTag="${IMAGE_TAG}" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)"
+
+          if [[ "${promoted_digest}" != "${DIGEST}" ]]; then
+            echo "Digest mismatch."
+            echo "Source:   ${DIGEST}"
+            echo "Promoted: ${promoted_digest}"
+            exit 1
+          fi
+
+          echo "Promotion verified: ${promoted_digest}"
