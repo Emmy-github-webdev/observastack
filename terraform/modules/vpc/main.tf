@@ -13,3 +13,17 @@ resource "aws_vpc" "observastack_vpc" {
     }
   )
 }
+
+############################
+# Internet Gateway
+############################
+resource "aws_internet_gateway" "observastack_igw" {
+  vpc_id = aws_vpc.observastack_vpc.id
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.name_prefix}-igw"
+    }
+  )
+}
