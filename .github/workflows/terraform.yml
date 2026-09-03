@@ -253,7 +253,7 @@ jobs:
           echo "AWS role variable is present"
 
       - name: Debug OIDC claims
-        uses: github/actions-oidc-debugger@main
+        uses: github/actions-oidc-debugger@feature/volume-4-cicd-github-actions
 
       - name: Configure AWS credentials
         if: |
