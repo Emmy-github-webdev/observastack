@@ -147,6 +147,30 @@ resource "aws_route_table_association" "private_rt_association" {
   route_table_id = aws_route_table.private_rt[each.key].id
 }
 
+#############################
+# Database route table  
+#############################
+resource "aws_route_table" "database" {
+  for_each = aws_subnet.database
+
+  vpc_id = aws_vpc.observastack_vpc.id
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.name_prefix}-database-rt-${each.key}"
+    }
+  )
+}
+
+resource "aws_route_table_association" "database" {
+  for_each = aws_subnet.database
+
+  subnet_id      = each.value.id
+  route_table_id = aws_route_table.database[each.key].id
+}
+
+
 ##############################
 # Nat Gateways
 ##############################
