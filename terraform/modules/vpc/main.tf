@@ -146,3 +146,68 @@ resource "aws_route_table_association" "private_rt_association" {
   subnet_id      = each.value.id
   route_table_id = aws_route_table.private_rt[each.key].id
 }
+
+##############################
+# Nat Gateways
+##############################
+resource "aws_nat_gateway" "nat_gateway" {
+  for_each = var.enable_nat_gateway ? (
+    var.single_nat_gateway
+    ? { "${var.availability_zones[0]}" = 0 }
+    : {
+        for index, az in var.availability_zones :
+        az => index
+      }
+  ) : {}
+
+  allocation_id = aws_eip.eip_nat[each.key].id
+  subnet_id     = aws_subnet.pub_subnet[each.key].id
+
+  depends_on = [
+    aws_internet_gateway.observastack_igw
+  ]
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.name_prefix}-nat-${each.key}"
+    }
+  )
+}
+
+resource "aws_route" "private_nat" {
+  for_each = var.enable_nat_gateway ? aws_route_table.private : {}
+
+  route_table_id         = each.value.id
+  destination_cidr_block = "0.0.0.0/0"
+
+  nat_gateway_id = aws_nat_gateway.nat_gateway[
+    var.single_nat_gateway
+    ? var.availability_zones[0]
+    : each.key
+  ].id
+}
+
+
+#############################
+# Elastic IPs for NAT Gateways
+#############################
+resource "aws_eip" "eip_nat" {
+  for_each = var.enable_nat_gateway ? (
+    var.single_nat_gateway
+    ? { "${var.availability_zones[0]}" = 0 }
+    : {
+        for index, az in var.availability_zones :
+        az => index
+      }
+  ) : {}
+
+  domain = "vpc"
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.name_prefix}-nat-eip-${each.key}"
+    }
+  )
+}
