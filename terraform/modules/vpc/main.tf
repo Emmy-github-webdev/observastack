@@ -247,3 +247,75 @@ resource "aws_cloudwatch_log_group" "flow_logs" {
 
   tags = local.common_tags
 }
+
+data "aws_iam_policy_document" "flow_logs_assume_role" {
+  count = var.enable_flow_logs ? 1 : 0
+
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["vpc-flow-logs.amazonaws.com"]
+    }
+
+    actions = [
+      "sts:AssumeRole"
+    ]
+  }
+}
+
+resource "aws_iam_role" "flow_logs" {
+  count = var.enable_flow_logs ? 1 : 0
+
+  name = "${local.name_prefix}-vpc-flow-logs"
+
+  assume_role_policy = data.aws_iam_policy_document.flow_logs_assume_role[0].json
+
+  tags = local.common_tags
+}
+
+data "aws_iam_policy_document" "flow_logs" {
+  count = var.enable_flow_logs ? 1 : 0
+
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "logs:CreateLogStream",
+      "logs:DescribeLogStreams",
+      "logs:PutLogEvents"
+    ]
+
+    resources = [
+      "${aws_cloudwatch_log_group.flow_logs[0].arn}:*"
+    ]
+  }
+}
+
+resource "aws_iam_role_policy" "flow_logs" {
+  count = var.enable_flow_logs ? 1 : 0
+
+  name = "${local.name_prefix}-vpc-flow-logs"
+
+  role   = aws_iam_role.flow_logs[0].id
+  policy = data.aws_iam_policy_document.flow_logs[0].json
+}
+
+resource "aws_flow_log" "flow_log" {
+  count = var.enable_flow_logs ? 1 : 0
+
+  vpc_id = aws_vpc.observastack_vpc.id
+
+  traffic_type = "ALL"
+
+  iam_role_arn    = aws_iam_role.flow_logs[0].arn
+  log_destination = aws_cloudwatch_log_group.flow_logs[0].arn
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.name_prefix}-flow-logs"
+    }
+  )
+}
