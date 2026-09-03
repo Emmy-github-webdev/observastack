@@ -243,6 +243,15 @@ jobs:
           github.event_name == 'pull_request'
         uses: actions/checkout@v6.0.2
 
+      - name: Check AWS role secret
+        run: |
+          if [ -z "${{ vars.TERRAFORM_PLAN_ROLE_ARN }}" ]; then
+            echo "TERRAFORM_PLAN_ROLE_ARN variable is missing"
+            exit 1
+          fi
+
+          echo "AWS role variable is present"
+
       - name: Configure AWS credentials
         if: |
           matrix.run == 'true' ||
