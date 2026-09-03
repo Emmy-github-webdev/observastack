@@ -96,3 +96,53 @@ resource "aws_subnet" "database" {
     }
   )
 }
+
+############################
+# Public route table
+############################
+resource "aws_route_table" "public_rt" {
+  vpc_id = aws_vpc.observastack_vpc.id
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.name_prefix}-public-rt"
+    }
+  )
+}
+
+resource "aws_route" "public_internet" {
+  route_table_id         = aws_route_table.public_rt.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.observastack_igw.id
+}
+
+resource "aws_route_table_association" "public_rt_association" {
+  for_each = aws_subnet.pub_subnet
+
+  subnet_id      = each.value.id
+  route_table_id = aws_route_table.public_rt.id
+}
+
+#############################
+# Private route table   
+#############################
+resource "aws_route_table" "private_rt" {
+  for_each = aws_subnet.priv_subnet
+
+  vpc_id = aws_vpc.observastack_vpc.id
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.name_prefix}-private-rt-${each.key}"
+    }
+  )
+}
+
+resource "aws_route_table_association" "private_rt_association" {
+  for_each = aws_subnet.priv_subnet
+
+  subnet_id      = each.value.id
+  route_table_id = aws_route_table.private_rt[each.key].id
+}
