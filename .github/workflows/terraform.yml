@@ -252,6 +252,9 @@ jobs:
 
           echo "AWS role variable is present"
 
+      - name: Debug OIDC claims
+        uses: github/actions-oidc-debugger@main
+
       - name: Configure AWS credentials
         if: |
           matrix.run == 'true' ||
