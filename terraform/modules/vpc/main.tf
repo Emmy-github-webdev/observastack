@@ -40,7 +40,7 @@ resource "aws_subnet" "pub_subnet" {
   vpc_id                  = aws_vpc.observastack_vpc.id
   availability_zone       = each.key
   cidr_block              = cidrsubnet(var.vpc_cidr, 4, each.value)
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = false
 
   tags = merge(
     local.common_tags,
