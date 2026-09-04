@@ -200,7 +200,7 @@ resource "aws_nat_gateway" "nat_gateway" {
 }
 
 resource "aws_route" "private_nat" {
-  for_each = var.enable_nat_gateway ? aws_route_table.private : {}
+  for_each = var.enable_nat_gateway ? aws_route_table.private_rt : {}
 
   route_table_id         = each.value.id
   destination_cidr_block = "0.0.0.0/0"
