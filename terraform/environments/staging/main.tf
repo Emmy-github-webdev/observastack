@@ -2,7 +2,7 @@ module "vpc" {
   source = "../../modules/vpc"
 
   project_name = "observastack"
-  environment = "staging"
+  environment  = "staging"
 
   vpc_cidr = "10.20.0.0/16"
 
@@ -12,13 +12,11 @@ module "vpc" {
     "us-east-1c"
   ]
 
-  enable_nat_gateway = true
-  single_nat_gateway = false
-
-  enable_vpc_endpoints = true
-  enable_flow_logs     = true
-
-    tags = {
-    CostCenter = "observastack-staging"
+  tags = {
+    Project     = "observastack"
+    Environment = "staging"
+    ManagedBy   = "Terraform"
+    Owner       = "ObservaStack"
+    Criticality = "medium"
   }
 }

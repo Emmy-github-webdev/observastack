@@ -179,9 +179,9 @@ resource "aws_nat_gateway" "nat_gateway" {
     var.single_nat_gateway
     ? { "${var.availability_zones[0]}" = 0 }
     : {
-        for index, az in var.availability_zones :
-        az => index
-      }
+      for index, az in var.availability_zones :
+      az => index
+    }
   ) : {}
 
   allocation_id = aws_eip.eip_nat[each.key].id
@@ -221,9 +221,9 @@ resource "aws_eip" "eip_nat" {
     var.single_nat_gateway
     ? { "${var.availability_zones[0]}" = 0 }
     : {
-        for index, az in var.availability_zones :
-        az => index
-      }
+      for index, az in var.availability_zones :
+      az => index
+    }
   ) : {}
 
   domain = "vpc"
