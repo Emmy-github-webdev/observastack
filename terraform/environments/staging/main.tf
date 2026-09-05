@@ -11,12 +11,20 @@ module "vpc" {
     "us-east-1b",
     "us-east-1c"
   ]
+  s3_endpoint_bucket_arns = [
+    "arn:aws:s3:::emmy-github-webdev-observastack"
+  ]
+  
+  tags = local.common_tags
+}
 
-  tags = {
-    Project     = "observastack"
-    Environment = "staging"
-    ManagedBy   = "Terraform"
-    Owner       = "ObservaStack"
-    Criticality = "medium"
-  }
+module "kms" {
+  source = "../../modules/kms"
+
+  project_name = "observastack"
+  environment  = "staging"
+
+  deletion_window_in_days = 14
+
+ tags = local.common_tags
 }
