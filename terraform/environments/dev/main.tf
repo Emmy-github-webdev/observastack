@@ -15,7 +15,7 @@ module "vpc" {
     "arn:aws:s3:::emmy-github-webdev-observastack"
   ]
 
- tags = local.common_tags
+  tags = local.common_tags
 }
 
 module "kms" {

@@ -11,7 +11,7 @@ module "vpc" {
     "us-east-1b",
     "us-east-1c"
   ]
-  
+
   s3_endpoint_bucket_arns = [
     "arn:aws:s3:::emmy-github-webdev-observastack"
   ]
@@ -26,5 +26,5 @@ module "kms" {
   environment  = "production"
 
   deletion_window_in_days = 30
-  tags = local.common_tags
+  tags                    = local.common_tags
 }

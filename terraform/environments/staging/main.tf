@@ -14,7 +14,7 @@ module "vpc" {
   s3_endpoint_bucket_arns = [
     "arn:aws:s3:::emmy-github-webdev-observastack"
   ]
-  
+
   tags = local.common_tags
 }
 
@@ -26,5 +26,5 @@ module "kms" {
 
   deletion_window_in_days = 14
 
- tags = local.common_tags
+  tags = local.common_tags
 }
