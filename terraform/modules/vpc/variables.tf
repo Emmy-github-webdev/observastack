@@ -90,3 +90,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "s3_endpoint_bucket_arns" {
+  description = "S3 bucket ARNs accessible through the VPC S3 gateway endpoint."
+  type        = list(string)
+  default     = []
+}

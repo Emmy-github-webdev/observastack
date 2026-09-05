@@ -66,7 +66,9 @@ resource "aws_vpc_endpoint" "s3" {
           "s3:ListBucket"
         ]
 
-        Resource = "*"
+        Resource = [
+          var.s3_endpoint_bucket_arns
+        ]
       }
     ]
   })
