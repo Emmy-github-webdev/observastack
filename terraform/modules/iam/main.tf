@@ -208,3 +208,43 @@ resource "aws_iam_role_policy" "external_secrets" {
 
   policy = data.aws_iam_policy_document.external_secrets[0].json
 }
+
+##########################################
+# Application IAM roles
+##########################################
+data "aws_iam_policy_document" "application_assume_role" {
+  count = var.create_application_roles ? 1 : 0
+
+  statement {
+    sid    = "AllowEKSPodIdentity"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["pods.eks.amazonaws.com"]
+    }
+
+    actions = [
+      "sts:AssumeRole",
+      "sts:TagSession"
+    ]
+  }
+}
+
+resource "aws_iam_role" "application" {
+  for_each = var.create_application_roles ? var.application_names : []
+
+  name = local.application_role_names[each.key]
+
+  assume_role_policy = data.aws_iam_policy_document.application_assume_role[0].json
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name        = local.application_role_names[each.key]
+      Component   = "application"
+      Purpose     = each.key
+      Application = each.key
+    }
+  )
+}
