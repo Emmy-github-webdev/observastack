@@ -28,3 +28,25 @@ module "kms" {
 
   tags = local.common_tags
 }
+
+module "iam" {
+  source = "../../modules/iam"
+
+  project_name = "observastack"
+  environment  = "staging"
+
+  # create_eks_cluster_role     = true
+  # create_eks_node_role        = true
+  # create_load_balancer_role   = true
+  # create_external_secrets_role = true
+  # create_application_roles    = true
+
+  application_names = [
+    "user-service",
+    "product-service",
+    "order-service",
+    "payment-service"
+  ]
+
+  tags = local.common_tags
+}
