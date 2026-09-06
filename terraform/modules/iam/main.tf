@@ -141,3 +141,70 @@ resource "aws_iam_role" "load_balancer" {
     }
   )
 }
+
+####################################
+# External Secrets IAM Role
+####################################
+
+data "aws_iam_policy_document" "external_secrets_assume_role" {
+  count = var.create_external_secrets_role ? 1 : 0
+
+  statement {
+    sid    = "AllowEKSPodIdentity"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["pods.eks.amazonaws.com"]
+    }
+
+    actions = [
+      "sts:AssumeRole",
+      "sts:TagSession"
+    ]
+  }
+}
+
+resource "aws_iam_role" "external_secrets" {
+  count = var.create_external_secrets_role ? 1 : 0
+
+  name = "${local.name_prefix}-external-secrets"
+
+  assume_role_policy = data.aws_iam_policy_document.external_secrets_assume_role[0].json
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name      = "${local.name_prefix}-external-secrets"
+      Component = "secrets"
+      Purpose   = "external-secrets"
+    }
+  )
+}
+
+data "aws_iam_policy_document" "external_secrets" {
+  count = var.create_external_secrets_role ? 1 : 0
+
+  statement {
+    sid    = "ReadObservaStackSecrets"
+    effect = "Allow"
+
+    actions = [
+      "secretsmanager:DescribeSecret",
+      "secretsmanager:GetSecretValue"
+    ]
+
+    resources = [
+      "arn:aws:secretsmanager:*:*:secret:observastack/${var.environment}/*"
+    ]
+  }
+}
+
+resource "aws_iam_role_policy" "external_secrets" {
+  count = var.create_external_secrets_role ? 1 : 0
+
+  name = "${local.name_prefix}-external-secrets-policy"
+  role = aws_iam_role.external_secrets[0].id
+
+  policy = data.aws_iam_policy_document.external_secrets[0].json
+}
