@@ -131,11 +131,14 @@ resource "aws_eks_addon" "vpc_cni" {
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "OVERWRITE"
 
-  tags = local.common_tags
+  pod_identity_association {
+    role_arn        = var.vpc_cni_role_arn
+    service_account = "aws-node"
+  }
 
-  depends_on = [
-    aws_eks_node_group.system
-  ]
+  tags = merge(local.common_tags, { Component = "vpc-cni" })
+
+  depends_on = [aws_eks_addon.pod_identity_agent]
 }
 
 resource "aws_eks_addon" "coredns" {
@@ -150,6 +153,18 @@ resource "aws_eks_addon" "coredns" {
   depends_on = [
     aws_eks_node_group.system
   ]
+}
+
+resource "aws_eks_addon" "pod_identity_agent" {
+  cluster_name = aws_eks_cluster.observastack_eks_cluster.name
+  addon_name   = "eks-pod-identity-agent"
+
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "OVERWRITE"
+
+  tags = merge(local.common_tags, { Component = "pod-identity-agent" })
+
+  depends_on = [aws_eks_node_group.system]
 }
 
 resource "aws_eks_addon" "kube_proxy" {
@@ -173,10 +188,16 @@ resource "aws_eks_addon" "ebs_csi" {
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "OVERWRITE"
 
-  tags = local.common_tags
+  pod_identity_association {
+    role_arn        = var.ebs_csi_role_arn
+    service_account = "ebs-csi-controller-sa"
+  }
+
+  tags = merge(local.common_tags, { Component = "ebs-csi" })
 
   depends_on = [
-    aws_eks_node_group.system
+    aws_eks_addon.pod_identity_agent,
+    aws_eks_addon.vpc_cni
   ]
 }
 
@@ -194,4 +215,26 @@ resource "aws_eks_access_entry" "observastack_eks_access_entry" {
   depends_on = [
     aws_eks_cluster.observastack_eks_cluster
   ]
+}
+
+resource "aws_eks_access_policy_association" "observastack_" {
+  for_each = {
+    for item in flatten([
+      for name, entry in var.access_entries : [
+        for policy_arn in entry.policy_arns : {
+          key           = "${name}:${policy_arn}"
+          principal_arn = entry.principal_arn
+          policy_arn    = policy_arn
+        }
+      ]
+    ]) : item.key => item
+  }
+
+  cluster_name  = aws_eks_cluster.observastack_eks_cluster.name
+  principal_arn = each.value.principal_arn
+  policy_arn    = each.value.policy_arn
+
+  access_scope { type = "cluster" }
+
+  depends_on = [aws_eks_access_entry.observastack_eks_access_entry]
 }

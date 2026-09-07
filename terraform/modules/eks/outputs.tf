@@ -37,3 +37,15 @@ output "node_group_arn" {
   description = "Default managed node group ARN."
   value       = aws_eks_node_group.system.arn
 }
+
+output "pod_identity_agent_addon_arn" {
+  value = aws_eks_addon.pod_identity_agent.arn
+}
+
+output "vpc_cni_addon_arn" {
+  value = aws_eks_addon.vpc_cni.arn
+}
+
+output "ebs_csi_addon_arn" {
+  value = aws_eks_addon.ebs_csi.arn
+}

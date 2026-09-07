@@ -10,7 +10,7 @@ locals {
     },
     var.tags
   )
-  
+
   pod_identity_trust_actions = [
     "sts:AssumeRole",
     "sts:TagSession"

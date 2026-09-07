@@ -162,3 +162,13 @@ variable "access_entries" {
 
   default = {}
 }
+
+variable "ebs_csi_role_arn" {
+  description = "Dedicated Pod Identity role for Amazon EBS CSI."
+  type        = string
+}
+
+variable "vpc_cni_role_arn" {
+  description = "Dedicated Pod Identity role for Amazon VPC CNI."
+  type        = string
+}

@@ -66,6 +66,9 @@ module "eks" {
   cluster_role_arn = module.iam.eks_cluster_role_arn
   node_role_arn    = module.iam.eks_node_role_arn
 
+  vpc_cni_role_arn = module.iam.vpc_cni_role_arn
+  ebs_csi_role_arn = module.iam.ebs_csi_role_arn
+
   cluster_endpoint_private_access = true
   cluster_endpoint_public_access  = false
 

@@ -66,25 +66,28 @@ module "eks" {
   cluster_role_arn = module.iam.eks_cluster_role_arn
   node_role_arn    = module.iam.eks_node_role_arn
 
+  vpc_cni_role_arn = module.iam.vpc_cni_role_arn
+  ebs_csi_role_arn = module.iam.ebs_csi_role_arn
+
   cluster_endpoint_private_access = true
   cluster_endpoint_public_access  = false
 
   cluster_encryption_kms_key_arn = module.kms.key_arn
   cluster_log_kms_key_arn        = module.kms.key_arn
 
-  cluster_log_retention_days = 90
+  cluster_log_retention_days = 7
 
   node_group_instance_types = [
-    "m6i.large"
+    "t3.medium"
   ]
 
   node_group_capacity_type = "ON_DEMAND"
 
-  node_group_min_size     = 3
-  node_group_desired_size = 3
-  node_group_max_size     = 9
+  node_group_min_size     = 2
+  node_group_desired_size = 2
+  node_group_max_size     = 4
 
-  node_group_disk_size = 100
+  node_group_disk_size = 50
 
   tags = local.common_tags
 }
