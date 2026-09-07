@@ -43,3 +43,19 @@ output "application_role_names" {
     name => role.name
   }
 }
+
+output "pod_identity_role_arns" {
+  description = "All IAM role ARNs intended for EKS Pod Identity associations."
+  value = merge(
+    {
+      vpc_cni          = try(aws_iam_role.vpc_cni[0].arn, null)
+      ebs_csi          = try(aws_iam_role.ebs_csi[0].arn, null)
+      load_balancer    = try(aws_iam_role.load_balancer[0].arn, null)
+      external_secrets = try(aws_iam_role.external_secrets[0].arn, null)
+    },
+    {
+      for name, role in aws_iam_role.application :
+      name => role.arn
+    }
+  )
+}

@@ -10,6 +10,11 @@ locals {
     },
     var.tags
   )
+  
+  pod_identity_trust_actions = [
+    "sts:AssumeRole",
+    "sts:TagSession"
+  ]
 
   application_role_names = {
     for application in var.application_names :

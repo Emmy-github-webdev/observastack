@@ -69,3 +69,15 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "create_vpc_cni_role" {
+  description = "Create a dedicated EKS Pod Identity role for the Amazon VPC CNI add-on."
+  type        = bool
+  default     = true
+}
+
+variable "create_ebs_csi_role" {
+  description = "Create a dedicated EKS Pod Identity role for the Amazon EBS CSI Driver add-on."
+  type        = bool
+  default     = true
+}

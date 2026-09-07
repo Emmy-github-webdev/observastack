@@ -18,6 +18,48 @@ data "aws_iam_policy_document" "eks_cluster_assume_role" {
   }
 }
 
+data "aws_iam_policy_document" "ec2_assume_role" {
+  statement {
+    sid     = "AllowEC2ServiceToAssumeRole"
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com"]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "pod_identity_assume_role" {
+  statement {
+    sid     = "AllowEKSPodIdentityToAssumeRole"
+    effect  = "Allow"
+    actions = local.pod_identity_trust_actions
+
+    principals {
+      type        = "Service"
+      identifiers = ["pods.eks.amazonaws.com"]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "external_secrets" {
+  statement {
+    sid    = "ReadObservaStackSecrets"
+    effect = "Allow"
+
+    actions = [
+      "secretsmanager:DescribeSecret",
+      "secretsmanager:GetSecretValue"
+    ]
+
+    resources = [
+      "arn:aws:secretsmanager:*:*:secret:observastack/${var.environment}/*"
+    ]
+  }
+}
+
 resource "aws_iam_role" "eks_cluster" {
   count = var.create_eks_cluster_role ? 1 : 0
 
@@ -182,24 +224,6 @@ resource "aws_iam_role" "external_secrets" {
   )
 }
 
-data "aws_iam_policy_document" "external_secrets" {
-  count = var.create_external_secrets_role ? 1 : 0
-
-  statement {
-    sid    = "ReadObservaStackSecrets"
-    effect = "Allow"
-
-    actions = [
-      "secretsmanager:DescribeSecret",
-      "secretsmanager:GetSecretValue"
-    ]
-
-    resources = [
-      "arn:aws:secretsmanager:*:*:secret:observastack/${var.environment}/*"
-    ]
-  }
-}
-
 resource "aws_iam_role_policy" "external_secrets" {
   count = var.create_external_secrets_role ? 1 : 0
 
@@ -247,4 +271,51 @@ resource "aws_iam_role" "application" {
       Application = each.key
     }
   )
+}
+
+################################
+# AmazonEKS_CNI_Policy
+################################
+
+
+resource "aws_iam_role" "vpc_cni" {
+  count = var.create_vpc_cni_role ? 1 : 0
+
+  name               = "${local.name_prefix}-vpc-cni-role"
+  assume_role_policy = data.aws_iam_policy_document.pod_identity_assume_role.json
+  description        = "EKS Pod Identity role for the Amazon VPC CNI add-on."
+
+  tags = merge(local.common_tags, {
+    Component = "vpc-cni"
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "vpc_cni" {
+  count = var.create_vpc_cni_role ? 1 : 0
+
+  role       = aws_iam_role.vpc_cni[0].name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+}
+
+################################
+# ebs_csi
+################################
+
+resource "aws_iam_role" "ebs_csi" {
+  count = var.create_ebs_csi_role ? 1 : 0
+
+  name               = "${local.name_prefix}-ebs-csi-role"
+  assume_role_policy = data.aws_iam_policy_document.pod_identity_assume_role.json
+  description        = "EKS Pod Identity role for the Amazon EBS CSI Driver add-on."
+
+  tags = merge(local.common_tags, {
+    Component = "ebs-csi"
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ebs_csi" {
+  count = var.create_ebs_csi_role ? 1 : 0
+
+  role       = aws_iam_role.ebs_csi[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicyV2"
 }
