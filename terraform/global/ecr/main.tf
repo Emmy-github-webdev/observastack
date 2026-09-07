@@ -7,7 +7,7 @@ module "ecr" {
 
   kms_key_arn = var.kms_key_arn
 
-  scan_on_push      = true
+  scan_on_push         = true
   image_tag_mutability = "IMMUTABLE"
 
   force_delete = false

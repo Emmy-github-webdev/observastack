@@ -50,3 +50,41 @@ module "iam" {
 
   tags = local.common_tags
 }
+
+module "eks" {
+  source = "../../modules/eks"
+
+  project_name = "observastack"
+  environment  = "production"
+
+  kubernetes_version = "1.35"
+
+  vpc_id = module.vpc.vpc_id
+
+  private_subnet_ids = module.vpc.private_subnet_ids
+
+  cluster_role_arn = module.iam.eks_cluster_role_arn
+  node_role_arn    = module.iam.eks_node_role_arn
+
+  cluster_endpoint_private_access = true
+  cluster_endpoint_public_access  = false
+
+  cluster_encryption_kms_key_arn = module.kms.key_arn
+  cluster_log_kms_key_arn        = module.kms.key_arn
+
+  cluster_log_retention_days = 90
+
+  node_group_instance_types = [
+    "m6i.large"
+  ]
+
+  node_group_capacity_type = "ON_DEMAND"
+
+  node_group_min_size     = 3
+  node_group_desired_size = 3
+  node_group_max_size     = 9
+
+  node_group_disk_size = 100
+
+  tags = local.common_tags
+}
