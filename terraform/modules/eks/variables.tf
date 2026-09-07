@@ -80,7 +80,8 @@ variable "cluster_enabled_log_types" {
 variable "cluster_log_retention_days" {
   description = "CloudWatch retention period for EKS control-plane logs."
   type        = number
-  default     = 30
+  # default     = 30
+  default = 0 # for testing purposes only
 }
 
 variable "cluster_log_kms_key_arn" {

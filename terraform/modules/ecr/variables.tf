@@ -49,7 +49,8 @@ variable "force_delete" {
 variable "untagged_image_expiration_days" {
   description = "Number of days before untagged images are expired."
   type        = number
-  default     = 7
+  # default     = 7
+  default = 0 # for testing purposes only
 
   validation {
     condition     = var.untagged_image_expiration_days >= 1

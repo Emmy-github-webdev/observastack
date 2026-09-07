@@ -24,7 +24,8 @@ module "kms" {
   project_name = "observastack"
   environment  = "staging"
 
-  deletion_window_in_days = 14
+  # deletion_window_in_days = 14
+  deletion_window_in_days = 0 # for testing purposes only
 
   tags = local.common_tags
 }
@@ -76,7 +77,8 @@ module "eks" {
   cluster_encryption_kms_key_arn = module.kms.key_arn
   cluster_log_kms_key_arn        = module.kms.key_arn
 
-  cluster_log_retention_days = 7
+  # cluster_log_retention_days = 7
+  cluster_log_retention_days = 0 # for testing purposes only
 
   node_group_instance_types = [
     "t3.medium"

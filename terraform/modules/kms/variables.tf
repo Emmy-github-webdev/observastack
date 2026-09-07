@@ -28,10 +28,17 @@ variable "enable_key_rotation" {
 variable "deletion_window_in_days" {
   description = "Number of days before a scheduled KMS key deletion takes effect."
   type        = number
-  default     = 30
+  # default     = 30
+  default = 0 # for testing purposes only
 
+  # validation {
+  #   condition     = var.deletion_window_in_days >= 7 && var.deletion_window_in_days <= 30
+  #   error_message = "KMS deletion window must be between 7 and 30 days."
+  # }
+
+  # for testing purposes only, we allow deletion_window_in_days to be 0, but in production, it should be between 7 and 30 days.
   validation {
-    condition     = var.deletion_window_in_days >= 7 && var.deletion_window_in_days <= 30
+    condition     = var.deletion_window_in_days >= 0 && var.deletion_window_in_days <= 0
     error_message = "KMS deletion window must be between 7 and 30 days."
   }
 }

@@ -65,7 +65,8 @@ variable "enable_flow_logs" {
 variable "flow_logs_retention_days" {
   description = "CloudWatch retention period for VPC Flow Logs."
   type        = number
-  default     = 30
+  # default     = 30
+  default = 0 # for testing purposes only
 
   validation {
     condition     = var.flow_logs_retention_days > 0
