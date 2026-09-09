@@ -61,6 +61,6 @@ output "pod_identity_role_arns" {
 }
 
 output "ebs_csi_role_arn" {
-  description = "The ebs csi arn."
-  value       = aws_iam_role.ebs_csi.arn
+  description = "The EBS CSI role ARN."
+  value       = var.create_ebs_csi_role ? aws_iam_role.ebs_csi[0].arn : null
 }
