@@ -69,7 +69,7 @@ variable "flow_logs_retention_days" {
   default = 0 # for testing purposes only
 
   validation {
-    condition     = var.flow_logs_retention_days > 0
+    condition     = var.flow_logs_retention_days >= 0
     error_message = "flow_logs_retention_days must be greater than zero."
   }
 }

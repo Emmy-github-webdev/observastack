@@ -230,7 +230,7 @@ resource "aws_iam_role_policy" "external_secrets" {
   name = "${local.name_prefix}-external-secrets-policy"
   role = aws_iam_role.external_secrets[0].id
 
-  policy = data.aws_iam_policy_document.external_secrets[0].json
+  policy = data.aws_iam_policy_document.external_secrets.json
 }
 
 ##########################################
