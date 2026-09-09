@@ -389,6 +389,11 @@ jobs:
       # --------------------------------------------------------
       # PLAN
       # --------------------------------------------------------
+      - name: Terraform diagnostics
+        run: |
+          terraform version
+          echo "TF_WARN_OUTPUT_ERRORS=${TF_WARN_OUTPUT_ERRORS:-<unset>}"
+          env | grep '^TF_' | sort || true
 
       - name: Terraform plan
         if: |
