@@ -64,3 +64,8 @@ output "ebs_csi_role_arn" {
   description = "The EBS CSI role ARN."
   value       = var.create_ebs_csi_role ? aws_iam_role.ebs_csi[0].arn : null
 }
+
+output "vpc_cni_role_arn" {
+  description = "The VPC CNI role ARN."
+  value       = var.create_vpc_cni_role ? aws_iam_role.vpc_cni[0].arn : null
+}
