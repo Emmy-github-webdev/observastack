@@ -1,3 +1,7 @@
+# ObservaStack 6.7 — RDS Module
+
+Enterprise PostgreSQL persistence layer for ObservaStack.
+
 ## Module structure
 
 ```
@@ -37,3 +41,34 @@ Application / Workload SG
 We'll provide a dedicated workload/application security group when composing the EKS/platform layer rather than using the EKS cluster SG as a broad trust boundary.
 
 Also, the RDS KMS key is environment-specific. The shared KMS key we're creating for ECR must not be reused for RDS. AWS's guidance specifically recommends dedicated customer-managed keys for RDS use
+
+
+## Includes
+- Private RDS PostgreSQL
+- DB subnet group
+- Dedicated security group with SG-based allow-list
+- Customer-managed KMS encryption
+- Multi-AZ
+- Automated backups
+- Deletion protection and final snapshots
+- CloudWatch PostgreSQL/upgrade logs
+- `rds.force_ssl`
+- Performance Insights
+- Optional Enhanced Monitoring
+- RDS-managed master password in Secrets Manager
+
+## Design
+Use an environment-specific KMS key for RDS. Do not reuse the shared ECR key.
+Do not allow VPC-wide CIDR ingress; pass only approved workload/application
+security-group IDs.
+
+6.9 Secrets should consume `master_user_secret_arn` instead of creating a
+second master password.
+
+Baseline sizing:
+- dev: db.t4g.micro / 20 GiB / 100 GiB max / 7-day backup
+- staging: db.t4g.medium / 50 GiB / 200 GiB max / 14-day backup
+- production: db.r7g.large / 100 GiB / 500 GiB max / 35-day backup
+
+Verify PostgreSQL engine version and instance-class availability in the target
+AWS region before applying.
