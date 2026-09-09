@@ -85,7 +85,8 @@ variable "maintenance_window" {
 
 variable "deletion_protection" { 
   type = bool 
-  default = true 
+  # default = true 
+  default = false # for testing purposes only
 }
 
 variable "skip_final_snapshot" { 
