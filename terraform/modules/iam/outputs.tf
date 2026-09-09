@@ -59,3 +59,8 @@ output "pod_identity_role_arns" {
     }
   )
 }
+
+output "ebs_csi_role_arn" {
+  description = "The ebs csi arn."
+  value       = aws_iam_role.ebs_csi.arn
+}
