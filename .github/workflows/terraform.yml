@@ -396,15 +396,24 @@ jobs:
           steps.operation.outputs.operation != 'destroy'
         working-directory: terraform/environments/${{ matrix.environment }}
         run: |
-          set -e
+          set +e
+
           terraform plan \
             -input=false \
             -no-color \
             -out=tfplan
 
           exit_code=$?
+
+          echo "=========================================="
           echo "Terraform plan exit code: ${exit_code}"
+          echo "=========================================="
+
+          ls -la tfplan || true
+
           exit "${exit_code}"
+
+
       # --------------------------------------------------------
       # DESTROY PLAN
       # --------------------------------------------------------
