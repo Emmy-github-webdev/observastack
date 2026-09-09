@@ -111,7 +111,7 @@ module "redis" {
   project_name     = "observastack"
   environment      = "staging"
   vpc_id           = module.vpc.vpc_id
-  cache_subnet_ids = module.vpc.cache_subnet_ids
+  cache_subnet_ids = module.vpc.database_subnet_ids
   kms_key_arn      = module.kms.key_arn
   tags             = local.common_tags
 }
