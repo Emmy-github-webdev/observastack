@@ -94,3 +94,13 @@ module "eks" {
 
   tags = local.common_tags
 }
+
+module "rds" {
+  source = "../../modules/rds"
+  vpc_id = module.vpc.vpc_id
+  project_name = "observastack"
+  environment  = "staging"
+  kms_key_arn = module.kms.key_arn
+  database_subnet_ids = module.vpc.database_subnet_ids
+  tags = local.common_tags
+}
