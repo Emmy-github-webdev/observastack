@@ -29,18 +29,18 @@ variable "engine_version" {
   default     = "17.6"
 }
 
-variable "instance_class" { 
-  type = string 
-  default = "db.t4g.micro" 
+variable "instance_class" {
+  type    = string
+  default = "db.t4g.micro"
 }
 
 variable "allocated_storage" {
-   type = number 
-   default = 20 
+  type    = number
+  default = 20
 }
 
-variable "max_allocated_storage" { 
-  type = number 
+variable "max_allocated_storage" {
+  type = number
   # default = 100 
   default = 30 # for testing purposes, can be increased for production
 }
@@ -54,13 +54,13 @@ variable "storage_type" {
   }
 }
 
-variable "multi_az" { 
-  type = bool 
-  default = true 
+variable "multi_az" {
+  type    = bool
+  default = true
 }
 
 variable "backup_retention_period" {
-  type    = number
+  type = number
   #default = 7
   default = 0 # for testing purposes, can be increased for production
   validation {
@@ -73,35 +73,35 @@ variable "backup_retention_period" {
   # }
 }
 
-variable "backup_window" { 
-  type = string 
-  default = "03:00-03:30" 
+variable "backup_window" {
+  type    = string
+  default = "03:00-03:30"
 }
 
-variable "maintenance_window" { 
-  type = string 
-  default = "sun:04:00-sun:04:30" 
+variable "maintenance_window" {
+  type    = string
+  default = "sun:04:00-sun:04:30"
 }
 
-variable "deletion_protection" { 
-  type = bool 
+variable "deletion_protection" {
+  type = bool
   # default = true 
   default = false # for testing purposes only
 }
 
-variable "skip_final_snapshot" { 
-  type = bool 
-  default = false 
+variable "skip_final_snapshot" {
+  type    = bool
+  default = false
 }
 
-variable "final_snapshot_identifier" { 
-  type = string 
-  default = null 
+variable "final_snapshot_identifier" {
+  type    = string
+  default = null
 }
 
-variable "apply_immediately" { 
-  type = bool 
-  default = false 
+variable "apply_immediately" {
+  type    = bool
+  default = false
 }
 
 variable "publicly_accessible" {
@@ -119,23 +119,23 @@ variable "allowed_security_group_ids" {
   default     = []
 }
 
-variable "database_port" { 
-  type = number 
-  default = 5432 
+variable "database_port" {
+  type    = number
+  default = 5432
 }
 
-variable "database_name" { 
-  type = string 
-  default = "observastack" 
+variable "database_name" {
+  type    = string
+  default = "observastack"
 }
-variable "master_username" { 
-  type = string 
-  default = "observastack_admin" 
+variable "master_username" {
+  type    = string
+  default = "observastack_admin"
 }
 
-variable "manage_master_user_password" { 
-  type = bool 
-  default = true 
+variable "manage_master_user_password" {
+  type    = bool
+  default = true
 }
 
 variable "enabled_cloudwatch_logs_exports" {
@@ -143,24 +143,24 @@ variable "enabled_cloudwatch_logs_exports" {
   default = ["postgresql", "upgrade"]
 }
 
-variable "parameter_family" { 
-  type = string 
-  default = "postgres17" 
+variable "parameter_family" {
+  type    = string
+  default = "postgres17"
 }
 
-variable "force_ssl" { 
-  type = bool 
-  default = true 
+variable "force_ssl" {
+  type    = bool
+  default = true
 }
 
-variable "enable_performance_insights" { 
-  type = bool 
-  default = true 
+variable "enable_performance_insights" {
+  type    = bool
+  default = true
 }
 
-variable "performance_insights_retention_period" { 
-  type = number 
-  default = 7 
+variable "performance_insights_retention_period" {
+  type    = number
+  default = 7
 }
 
 variable "monitoring_interval" {
@@ -172,12 +172,12 @@ variable "monitoring_interval" {
   }
 }
 
-variable "monitoring_role_arn" { 
-  type = string 
-  default = null 
+variable "monitoring_role_arn" {
+  type    = string
+  default = null
 }
 
-variable "tags" { 
-  type = map(string) 
-  default = {} 
+variable "tags" {
+  type    = map(string)
+  default = {}
 }

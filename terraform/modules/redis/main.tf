@@ -65,16 +65,16 @@ resource "aws_elasticache_replication_group" "observastack_elasticache_replicati
   node_type      = var.node_type
   port           = var.port
 
-  num_cache_clusters      = var.num_cache_clusters
+  num_cache_clusters         = var.num_cache_clusters
   automatic_failover_enabled = var.automatic_failover_enabled
-  multi_az_enabled        = var.multi_az_enabled
+  multi_az_enabled           = var.multi_az_enabled
 
-  subnet_group_name  = aws_elasticache_subnet_group.observastack_elasticache_subnet_group.name
-  security_group_ids = [aws_security_group.observastack_elasticache_security_group.id]
+  subnet_group_name    = aws_elasticache_subnet_group.observastack_elasticache_subnet_group.name
+  security_group_ids   = [aws_security_group.observastack_elasticache_security_group.id]
   parameter_group_name = aws_elasticache_parameter_group.observastack_elasticache_parameter_group.name
 
   at_rest_encryption_enabled = var.at_rest_encryption_enabled
-  kms_key_id                  = var.kms_key_arn
+  kms_key_id                 = var.kms_key_arn
 
   transit_encryption_enabled = var.transit_encryption_enabled
   auth_token                 = var.auth_token
