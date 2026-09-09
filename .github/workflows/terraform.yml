@@ -396,6 +396,9 @@ jobs:
           steps.operation.outputs.operation != 'destroy'
         working-directory: terraform/environments/${{ matrix.environment }}
         run: |
+          echo "TF_WARN_OUTPUT_ERRORS=${TF_WARN_OUTPUT_ERRORS:-<unset>}"
+
+          env | grep '^TF_' | sort || true
           set +e
 
           terraform plan \
