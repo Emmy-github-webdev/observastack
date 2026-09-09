@@ -18,17 +18,17 @@ module "vpc" {
   tags = local.common_tags
 }
 
-# module "kms" {
-#   source = "../../modules/kms"
+module "kms" {
+  source = "../../modules/kms"
 
-#   project_name = "observastack"
-#   environment  = "dev"
+  project_name = "observastack"
+  environment  = "dev"
 
-#   # deletion_window_in_days = 7
-#   deletion_window_in_days = 0 # for testing purposes only
+  # deletion_window_in_days = 7
+  deletion_window_in_days = 0 # for testing purposes only
 
-#   tags = local.common_tags
-# }
+  tags = local.common_tags
+}
 
 # module "iam" {
 #   source = "../../modules/iam"
