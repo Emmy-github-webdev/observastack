@@ -33,3 +33,10 @@ output "parameter_group_name" {
 output "cloudwatch_log_group_name" {
   value = try(aws_cloudwatch_log_group.redis[0].name, null)
 }
+
+
+output "auth_token" {
+  description = "Redis AUTH token."
+  value       = var.auth_token
+  sensitive   = true
+}
