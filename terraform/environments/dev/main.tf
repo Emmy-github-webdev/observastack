@@ -25,7 +25,6 @@ module "kms" {
   environment  = "dev"
 
   deletion_window_in_days = 7
-  # deletion_window_in_days = 0 # for testing purposes only
 
   tags = local.common_tags
 }
