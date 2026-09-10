@@ -76,8 +76,7 @@ module "eks" {
   cluster_encryption_kms_key_arn = module.kms.key_arn
   cluster_log_kms_key_arn        = module.kms.key_arn
 
-  # cluster_log_retention_days = 7
-  cluster_log_retention_days = 0 # for testing purposes only
+  cluster_log_retention_days = 7
 
   node_group_instance_types = [
     "t3.medium"

@@ -24,8 +24,6 @@ module "kms" {
   project_name = "observastack"
   environment  = "dev"
 
-  deletion_window_in_days = 7
-
   tags = local.common_tags
 }
 
