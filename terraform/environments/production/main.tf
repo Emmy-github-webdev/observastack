@@ -141,7 +141,7 @@ module "secrets" {
   }
 
   rds_master_user_secret_arn = module.rds.master_user_secret_arn
-  redis_auth_secret_arn      = module.redis.auth_secret_arn
+  redis_auth_secret_arn      = module.redis.auth_token
 
   tags = local.common_tags
 }
