@@ -40,9 +40,8 @@ variable "allocated_storage" {
 }
 
 variable "max_allocated_storage" {
-  type = number
-  # default = 100 
-  default = 30 # for testing purposes, can be increased for production
+  type    = number
+  default = 100
 }
 
 variable "storage_type" {
@@ -60,17 +59,12 @@ variable "multi_az" {
 }
 
 variable "backup_retention_period" {
-  type = number
-  #default = 7
-  default = 0 # for testing purposes, can be increased for production
+  type    = number
+  default = 7
   validation {
-    condition     = var.backup_retention_period >= 0 && var.backup_retention_period <= 0
-    error_message = "backup_retention_period must be between 1 and 35." # for testing purposes, can be increased for production
+    condition     = var.backup_retention_period >= 1 && var.backup_retention_period <= 35
+    error_message = "backup_retention_period must be between 1 and 35."
   }
-  # validation {
-  #   condition     = var.backup_retention_period >= 1 && var.backup_retention_period <= 35
-  #   error_message = "backup_retention_period must be between 1 and 35."
-  # }
 }
 
 variable "backup_window" {
@@ -84,9 +78,8 @@ variable "maintenance_window" {
 }
 
 variable "deletion_protection" {
-  type = bool
-  # default = true 
-  default = false # for testing purposes only
+  type    = bool
+  default = true
 }
 
 variable "skip_final_snapshot" {
