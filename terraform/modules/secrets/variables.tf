@@ -64,11 +64,17 @@ variable "secrets" {
   validation {
     condition = alltrue([
       for name, secret in var.secrets :
-      try(secret.recovery_window_in_days, var.recovery_window_in_days) == 0 ||
-      (try(secret.recovery_window_in_days, var.recovery_window_in_days) >= 7 && try(secret.recovery_window_in_days, var.recovery_window_in_days) <= 30)
+      secret.recovery_window_in_days == null ||
+      secret.recovery_window_in_days == 0 ||
+      (
+        secret.recovery_window_in_days >= 7 &&
+        secret.recovery_window_in_days <= 30
+      )
     ])
-    error_message = "Each secret recovery_window_in_days must be 0 or between 7 and 30 days."
+
+    error_message = "Each secret recovery_window_in_days must be null, 0, or between 7 and 30 days."
   }
+
 }
 
 variable "secret_resource_policies" {
