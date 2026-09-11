@@ -11,10 +11,10 @@ module "vpc" {
     "us-east-1b"
   ]
 
-  enable_nat_gateway      = true
-  single_nat_gateway      = true
-  enable_vpc_endpoints    = true
-  enable_flow_logs        = true
+  enable_nat_gateway       = true
+  single_nat_gateway       = true
+  enable_vpc_endpoints     = true
+  enable_flow_logs         = true
   flow_logs_retention_days = 7
 
   tags = local.common_tags
@@ -23,9 +23,9 @@ module "vpc" {
 module "kms" {
   source = "../../modules/kms"
 
-  project_name           = local.project_name
-  environment            = local.environment
-  description            = "ObservaStack development customer-managed KMS key."
+  project_name            = local.project_name
+  environment             = local.environment
+  description             = "ObservaStack development customer-managed KMS key."
   deletion_window_in_days = 7
 
   tags = local.common_tags
