@@ -20,16 +20,16 @@ module "vpc" {
   tags = local.common_tags
 }
 
-# module "kms" {
-#   source = "../../modules/kms"
+module "kms" {
+  source = "../../modules/kms"
 
-#   project_name            = local.project_name
-#   environment             = local.environment
-#   description             = "ObservaStack development customer-managed KMS key."
-#   deletion_window_in_days = 7
+  project_name            = local.project_name
+  environment             = local.environment
+  description             = "ObservaStack development customer-managed KMS key."
+  deletion_window_in_days = 7
 
-#   tags = local.common_tags
-# }
+  tags = local.common_tags
+}
 
 # module "iam" {
 #   source = "../../modules/iam"

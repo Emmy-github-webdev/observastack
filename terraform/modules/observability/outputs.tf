@@ -28,9 +28,9 @@
 #   value       = try(aws_cloudwatch_log_group.audit[0].arn, null)
 # }
 
-# output "dashboard_name" {
-#   description = "CloudWatch dashboard name."
-#   value       = try(aws_cloudwatch_dashboard.observastack_cloudwatch_dashboard[0].dashboard_name, null)
+# output "dashboard_names" {
+#   description = "CloudWatch dashboard names."
+#   value       = [aws_cloudwatch_dashboard.observastack_cloudwatch_dashboard[0].dashboard_name]
 # }
 
 # output "log_group_arns" {
