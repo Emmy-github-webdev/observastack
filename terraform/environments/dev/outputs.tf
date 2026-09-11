@@ -57,11 +57,11 @@ output "observability_log_group_arns" {
   value       = module.observability.log_group_arns
 }
 
-# output "secret_arns" {
-#   description = "Application secret ARNs managed by the Secrets Manager module."
-#   value       = module.secrets.secret_arns
-#   sensitive   = true
-# }
+output "secret_arns" {
+  description = "Application secret ARNs managed by the Secrets Manager module."
+  value       = module.secrets.secret_arns
+  sensitive   = true
+}
 
 # output "ecr_repository_name" {
 #   description = "Shared ObservaStack ECR repository name."
