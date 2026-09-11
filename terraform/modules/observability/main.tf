@@ -88,5 +88,3 @@ resource "aws_cloudwatch_dashboard" "observastack_cloudwatch_dashboard" {
     ]
   }))
 }
-
-data "aws_region" "current" {}

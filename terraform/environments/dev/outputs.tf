@@ -38,7 +38,7 @@ output "rds_master_user_secret_arn" {
 
 output "redis_primary_endpoint" {
   description = "Development Redis primary endpoint."
-  value       = module.redis.primary_endpoint
+  value       = module.redis.primary_endpoint_address
   sensitive   = true
 }
 
@@ -49,7 +49,7 @@ output "observability_dashboard_name" {
 
 output "observability_log_groups" {
   description = "Development CloudWatch log groups."
-  value       = module.observability.log_group_names
+  value       = module.observability.log_group_arns
 }
 
 output "secret_arns" {
