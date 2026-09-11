@@ -42,10 +42,10 @@ output "redis_primary_endpoint" {
   sensitive   = true
 }
 
-output "observability_dashboard_name" {
-  description = "Development CloudWatch observability dashboard name."
-  value       = module.observability.dashboard_name
-}
+# output "observability_dashboard_name" {
+#   description = "Development CloudWatch observability dashboard name."
+#   value       = module.observability.dashboard_name
+# }
 
 # output "observability_log_groups" {
 #   description = "Development CloudWatch log groups."
