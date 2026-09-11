@@ -91,16 +91,16 @@ module "rds" {
   tags                = local.common_tags
 }
 
-# module "redis" {
-#   source = "../../modules/redis"
+module "redis" {
+  source = "../../modules/redis"
 
-#   project_name     = local.project_name
-#   environment      = local.environment
-#   vpc_id           = module.vpc.vpc_id
-#   cache_subnet_ids = module.vpc.database_subnet_ids
-#   kms_key_arn      = module.kms.key_arn
-#   tags             = local.common_tags
-# }
+  project_name     = local.project_name
+  environment      = local.environment
+  vpc_id           = module.vpc.vpc_id
+  cache_subnet_ids = module.vpc.database_subnet_ids
+  kms_key_arn      = module.kms.key_arn
+  tags             = local.common_tags
+}
 
 # module "secrets" {
 #   source = "../../modules/secrets"
