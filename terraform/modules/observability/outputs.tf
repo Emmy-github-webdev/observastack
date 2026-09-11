@@ -41,3 +41,12 @@ output "log_group_arns" {
     audit       = try(aws_cloudwatch_log_group.audit[0].arn, null)
   }
 }
+
+output "log_group_names" {
+  description = "Map of managed CloudWatch Log Group names."
+  value = {
+    application = try(aws_cloudwatch_log_group.application[0].name, null)
+    platform    = try(aws_cloudwatch_log_group.platform[0].name, null)
+    audit       = try(aws_cloudwatch_log_group.audit[0].name, null)
+  }
+}
