@@ -1,26 +1,26 @@
-module "ecr" {
-  source = "../../modules/ecr"
+# module "ecr" {
+#   source = "../../modules/ecr"
 
-  project_name = "observastack"
+#   project_name = "observastack"
 
-  repository_name = "observastack"
+#   repository_name = "observastack"
 
-  kms_key_arn = var.kms_key_arn
+#   kms_key_arn = var.kms_key_arn
 
-  scan_on_push         = true
-  image_tag_mutability = "IMMUTABLE"
+#   scan_on_push         = true
+#   image_tag_mutability = "IMMUTABLE"
 
-  force_delete = false
+#   force_delete = false
 
-  untagged_image_expiration_days = 7
+#   untagged_image_expiration_days = 7
 
-  tags = {
-    Project     = "observastack"
-    Environment = "global"
-    ManagedBy   = "Terraform"
-    Component   = "ecr"
-    Purpose     = "shared-container-registry"
-    Repository  = "Emmy-github-webdev/observastack"
-    Owner       = "ObservaStack"
-  }
-}
+#   tags = {
+#     Project     = "observastack"
+#     Environment = "global"
+#     ManagedBy   = "Terraform"
+#     Component   = "ecr"
+#     Purpose     = "shared-container-registry"
+#     Repository  = "Emmy-github-webdev/observastack"
+#     Owner       = "ObservaStack"
+#   }
+# }
