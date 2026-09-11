@@ -40,46 +40,46 @@ module "iam" {
   tags = local.common_tags
 }
 
-# module "eks" {
-#   source = "../../modules/eks"
+module "eks" {
+  source = "../../modules/eks"
 
-#   project_name = local.project_name
-#   environment  = local.environment
+  project_name = local.project_name
+  environment  = local.environment
 
-#   kubernetes_version = var.kubernetes_version
+  kubernetes_version = var.kubernetes_version
 
-#   vpc_id = module.vpc.vpc_id
+  vpc_id = module.vpc.vpc_id
 
-#   private_subnet_ids = module.vpc.private_subnet_ids
+  private_subnet_ids = module.vpc.private_subnet_ids
 
-#   cluster_role_arn = module.iam.eks_cluster_role_arn
-#   node_role_arn    = module.iam.eks_node_role_arn
+  cluster_role_arn = module.iam.eks_cluster_role_arn
+  node_role_arn    = module.iam.eks_node_role_arn
 
-#   vpc_cni_role_arn = module.iam.vpc_cni_role_arn
-#   ebs_csi_role_arn = module.iam.ebs_csi_role_arn
+  vpc_cni_role_arn = module.iam.vpc_cni_role_arn
+  ebs_csi_role_arn = module.iam.ebs_csi_role_arn
 
-#   cluster_endpoint_private_access = true
-#   cluster_endpoint_public_access  = false
+  cluster_endpoint_private_access = true
+  cluster_endpoint_public_access  = false
 
-#   cluster_encryption_kms_key_arn = module.kms.key_arn
-#   cluster_log_kms_key_arn        = module.kms.key_arn
+  cluster_encryption_kms_key_arn = module.kms.key_arn
+  cluster_log_kms_key_arn        = module.kms.key_arn
 
-#   cluster_log_retention_days = 7
+  cluster_log_retention_days = 7
 
-#   node_group_instance_types = [
-#     "t3.medium"
-#   ]
+  node_group_instance_types = [
+    "t3.medium"
+  ]
 
-#   node_group_capacity_type = "ON_DEMAND"
+  node_group_capacity_type = "ON_DEMAND"
 
-#   node_group_min_size     = 1
-#   node_group_desired_size = 2
-#   node_group_max_size     = 3
+  node_group_min_size     = 1
+  node_group_desired_size = 2
+  node_group_max_size     = 3
 
-#   node_group_disk_size = 50
+  node_group_disk_size = 50
 
-#   tags = local.common_tags
-# }
+  tags = local.common_tags
+}
 
 # module "rds" {
 #   source              = "../../modules/rds"
