@@ -44,7 +44,7 @@ output "redis_primary_endpoint" {
 
 output "observability_dashboard_name" {
   description = "Development CloudWatch observability dashboard name."
-  value       = module.observability.dashboard_name
+  value       = module.observability.dashboard_names
 }
 
 output "observability_log_groups" {
