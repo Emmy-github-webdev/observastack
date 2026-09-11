@@ -42,15 +42,15 @@ output "redis_primary_endpoint" {
   sensitive   = true
 }
 
-# output "observability_dashboard_name" {
-#   description = "Development CloudWatch observability dashboard name."
-#   value       = module.observability.dashboard_name
-# }
+output "observability_dashboard_name" {
+  description = "Development CloudWatch observability dashboard name."
+  value       = module.observability.dashboard_name
+}
 
-# output "observability_log_groups" {
-#   description = "Development CloudWatch log groups."
-#   value       = module.observability.log_group_arns
-# }
+output "observability_log_groups" {
+  description = "Development CloudWatch log groups."
+  value       = module.observability.log_group_arns
+}
 
 output "secret_arns" {
   description = "Application secret ARNs managed by the Secrets Manager module."
