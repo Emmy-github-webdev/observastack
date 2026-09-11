@@ -137,15 +137,11 @@ module "secrets" {
 
 module "observability" {
   source = "../../modules/observability"
-
   project_name = local.project_name
   environment  = local.environment
-
   kms_key_arn        = module.kms.key_arn
   log_retention_days = 7
-
   create_alarms    = true
   create_dashboard = true
-
   tags = local.common_tags
 }
