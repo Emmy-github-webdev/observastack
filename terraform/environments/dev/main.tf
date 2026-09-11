@@ -31,14 +31,14 @@ module "kms" {
   tags = local.common_tags
 }
 
-# module "iam" {
-#   source = "../../modules/iam"
+module "iam" {
+  source = "../../modules/iam"
 
-#   project_name = local.project_name
-#   environment  = local.environment
+  project_name = local.project_name
+  environment  = local.environment
 
-#   tags = local.common_tags
-# }
+  tags = local.common_tags
+}
 
 # module "eks" {
 #   source = "../../modules/eks"
