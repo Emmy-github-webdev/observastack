@@ -63,12 +63,12 @@ output "secret_arns" {
   sensitive   = true
 }
 
-output "ecr_repository_name" {
-  description = "Shared ObservaStack ECR repository name."
-  value       = module.ecr.repository_name
-}
+# output "ecr_repository_name" {
+#   description = "Shared ObservaStack ECR repository name."
+#   value       = data.aws_ecr_repository.observastack.name
+# }
 
-output "ecr_repository_url" {
-  description = "Shared ObservaStack ECR repository URL."
-  value       = module.ecr.repository_url
-}
+# output "ecr_repository_url" {
+#   description = "Shared ObservaStack ECR repository URL."
+#   value       = data.aws_ecr_repository.observastack.repository_url
+# } 
