@@ -43,7 +43,7 @@ resource "aws_vpc_endpoint" "s3" {
   count = var.enable_vpc_endpoints ? 1 : 0
 
   vpc_id            = aws_vpc.observastack_vpc.id
-  service_name      = "com.amazonaws.${data.aws_region.current.id}.s3"
+  service_name      = "com.amazonaws.${data.aws_region.current.region}.s3"
   vpc_endpoint_type = "Gateway"
 
   route_table_ids = [
@@ -92,7 +92,7 @@ resource "aws_vpc_endpoint" "ecr_api" {
   count = var.enable_vpc_endpoints ? 1 : 0
 
   vpc_id            = aws_vpc.observastack_vpc.id
-  service_name      = "com.amazonaws.${data.aws_region.current.id}.ecr.api"
+  service_name      = "com.amazonaws.${data.aws_region.current.region}.ecr.api"
   vpc_endpoint_type = "Interface"
 
   subnet_ids = [
@@ -148,7 +148,7 @@ resource "aws_vpc_endpoint" "ecr_dkr" {
   count = var.enable_vpc_endpoints ? 1 : 0
 
   vpc_id            = aws_vpc.observastack_vpc.id
-  service_name      = "com.amazonaws.${data.aws_region.current.id}.ecr.dkr"
+  service_name      = "com.amazonaws.${data.aws_region.current.region}.ecr.dkr"
   vpc_endpoint_type = "Interface"
 
   subnet_ids = [
@@ -201,7 +201,7 @@ resource "aws_vpc_endpoint" "logs" {
   count = var.enable_vpc_endpoints ? 1 : 0
 
   vpc_id            = aws_vpc.observastack_vpc.id
-  service_name      = "com.amazonaws.${data.aws_region.current.id}.logs"
+  service_name      = "com.amazonaws.${data.aws_region.current.region}.logs"
   vpc_endpoint_type = "Interface"
 
   subnet_ids = [
@@ -256,7 +256,7 @@ resource "aws_vpc_endpoint" "sts" {
   count = var.enable_vpc_endpoints ? 1 : 0
 
   vpc_id            = aws_vpc.observastack_vpc.id
-  service_name      = "com.amazonaws.${data.aws_region.current.id}.sts"
+  service_name      = "com.amazonaws.${data.aws_region.current.region}.sts"
   vpc_endpoint_type = "Interface"
 
   subnet_ids = [

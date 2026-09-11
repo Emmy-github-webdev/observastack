@@ -70,7 +70,7 @@ resource "aws_cloudwatch_dashboard" "observastack_cloudwatch_dashboard" {
 
           properties = {
             title  = "CloudWatch Logs Incoming Bytes"
-            region = data.aws_region.current.id
+            region = data.aws_region.current.region
 
             metrics = [
               [
