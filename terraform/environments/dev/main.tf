@@ -102,38 +102,38 @@ module "redis" {
   tags             = local.common_tags
 }
 
-# module "secrets" {
-#   source = "../../modules/secrets"
+module "secrets" {
+  source = "../../modules/secrets"
 
-#   project_name = local.project_name
-#   environment  = local.environment
-#   kms_key_arn  = module.kms.key_arn
+  project_name = local.project_name
+  environment  = local.environment
+  kms_key_arn  = module.kms.key_arn
 
-#   recovery_window_in_days = 14
+  recovery_window_in_days = 14
 
-#   secrets = {
-#     "applications/user-service" = {
-#       description = "User service credentials"
-#     }
-#     "applications/product-service" = {
-#       description = "Product service credentials"
-#     }
-#     "applications/order-service" = {
-#       description = "Order service credentials"
-#     }
-#     "applications/payment-service" = {
-#       description = "Payment service credentials"
-#     }
-#     "integrations/stripe" = {
-#       description = "Payment provider integration credentials"
-#     }
-#   }
+  secrets = {
+    "applications/user-service" = {
+      description = "User service credentials"
+    }
+    "applications/product-service" = {
+      description = "Product service credentials"
+    }
+    "applications/order-service" = {
+      description = "Order service credentials"
+    }
+    "applications/payment-service" = {
+      description = "Payment service credentials"
+    }
+    "integrations/stripe" = {
+      description = "Payment provider integration credentials"
+    }
+  }
 
-#   rds_master_user_secret_arn = module.rds.master_user_secret_arn
-#   redis_auth_secret_arn      = module.redis.auth_token
+  rds_master_user_secret_arn = module.rds.master_user_secret_arn
+  redis_auth_secret_arn      = module.redis.auth_token
 
-#   tags = local.common_tags
-# }
+  tags = local.common_tags
+}
 
 # module "observability" {
 #   source             = "../../modules/observability"
