@@ -147,17 +147,17 @@ module "secrets" {
   tags = local.common_tags
 }
 
-module "observability" {
-  source = "../../modules/observability"
+# module "observability" {
+#   source = "../../modules/observability"
 
-  project_name = "observastack"
-  environment  = "staging"
+#   project_name = "observastack"
+#   environment  = "staging"
 
-  kms_key_arn        = module.kms.key_arn
-  log_retention_days = 30
+#   kms_key_arn        = module.kms.key_arn
+#   log_retention_days = 30
 
-  create_alarms    = true
-  create_dashboard = true
+#   create_alarms    = true
+#   create_dashboard = true
 
-  tags = local.common_tags
-}
+#   tags = local.common_tags
+# }
