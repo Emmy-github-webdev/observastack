@@ -411,11 +411,26 @@ jobs:
           steps.operation.outputs.operation == 'destroy'
         working-directory: terraform/environments/${{ matrix.environment }}
         run: |
+          set +e
           terraform plan \
             -destroy \
             -input=false \
             -no-color \
             -out=tfplan
+
+          terraform plan -detailed-exitcode -out=tfplan
+          exit_code=$?
+
+          set -e
+
+          if [ "$exit_code" -eq 1 ]; then
+            echo "Terraform plan failed."
+            exit 1
+          fi
+
+          if [ "$exit_code" -eq 2 ]; then
+            echo "Terraform plan completed successfully with changes."
+          fi
 
       # --------------------------------------------------------
       # UPLOAD PLAN
