@@ -45,46 +45,72 @@ resource "aws_cloudwatch_dashboard" "observastack_cloudwatch_dashboard" {
   count = var.create_dashboard ? 1 : 0
 
   dashboard_name = "${local.name_prefix}-observability"
-  dashboard_body = coalesce(var.dashboard_body, jsonencode({
-    widgets = [
-      {
-        type   = "text"
-        x      = 0
-        y      = 0
-        width  = 24
-        height = 2
-        properties = {
-          markdown = "# ObservaStack ${var.environment} — AWS Observability\n\nBaseline CloudWatch signals. Kubernetes-native Prometheus, Grafana, Loki, Tempo and OpenTelemetry remain GitOps-managed."
+
+  dashboard_body = coalesce(
+    var.dashboard_body,
+    jsonencode({
+      widgets = [
+        {
+          type   = "text"
+          x      = 0
+          y      = 0
+          width  = 24
+          height = 2
+
+          properties = {
+            markdown = "# ObservaStack ${var.environment} — AWS Observability\n\nBaseline CloudWatch signals. Kubernetes-native Prometheus, Grafana, Loki, Tempo and OpenTelemetry remain GitOps-managed."
+          }
+        },
+        {
+          type   = "metric"
+          x      = 0
+          y      = 2
+          width  = 12
+          height = 6
+
+          properties = {
+            title  = "CloudWatch Logs Incoming Bytes"
+            region = data.aws_region.current.name
+
+            metrics = [
+              [
+                "AWS/Logs",
+                "IncomingBytes",
+                "LogGroupName",
+                aws_cloudwatch_log_group.application[0].name,
+                {
+                  label = "Application"
+                  stat  = "Sum"
+                }
+              ],
+              [
+                "AWS/Logs",
+                "IncomingBytes",
+                "LogGroupName",
+                aws_cloudwatch_log_group.platform[0].name,
+                {
+                  label = "Platform"
+                  stat  = "Sum"
+                }
+              ],
+              [
+                "AWS/Logs",
+                "IncomingBytes",
+                "LogGroupName",
+                aws_cloudwatch_log_group.audit[0].name,
+                {
+                  label = "Audit"
+                  stat  = "Sum"
+                }
+              ]
+            ]
+
+            period = 300
+            stat   = "Sum"
+            view   = "timeSeries"
+          }
         }
-      },
-      {
-        type   = "metric"
-        x      = 0
-        y      = 2
-        width  = 12
-        height = 6
-        properties = {
-          title   = "CloudWatch Logs delivery errors"
-          region  = data.aws_region.current.name
-          metrics = [["AWS/Logs", "DeliveryErrors", { "stat" : "Sum" }]]
-          period  = 300
-          view    = "timeSeries"
-        }
-      },
-      {
-        type   = "metric"
-        x      = 12
-        y      = 2
-        width  = 12
-        height = 6
-        properties = {
-          title   = "RDS CPU Utilization"
-          region  = data.aws_region.current.name
-          metrics = [["AWS/RDS", "CPUUtilization", { "stat" : "Average" }]]
-          period  = 300
-          view    = "timeSeries"
-        }
-      }
-    ]
-  }))
+      ]
+    })
+  )
 }
