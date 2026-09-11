@@ -57,17 +57,6 @@ variable "untagged_image_expiration_days" {
   }
 }
 
-variable "tagged_image_retention_count" {
-  description = "Maximum number of tagged images retained by the lifecycle policy."
-  type        = number
-  default     = 7
-
-  validation {
-    condition     = var.tagged_image_retention_count >= 1
-    error_message = "Tagged image retention count must be at least 1."
-  }
-}
-
 variable "tags" {
   description = "Additional resource tags."
   type        = map(string)

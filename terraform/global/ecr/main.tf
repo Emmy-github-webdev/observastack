@@ -15,6 +15,12 @@ module "ecr" {
   untagged_image_expiration_days = 7
 
   tags = {
-    CostCenter = "observastack-platform"
+    Project     = "observastack"
+    Environment = "global"
+    ManagedBy   = "Terraform"
+    Component   = "ecr"
+    Purpose     = "shared-container-registry"
+    Repository  = "Emmy-github-webdev/observastack"
+    Owner       = "ObservaStack"
   }
 }
