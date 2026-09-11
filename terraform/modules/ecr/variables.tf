@@ -60,7 +60,7 @@ variable "untagged_image_expiration_days" {
 variable "tagged_image_retention_count" {
   description = "Maximum number of tagged images retained by the lifecycle policy."
   type        = number
-  default     = 100
+  default     = 7
 
   validation {
     condition     = var.tagged_image_retention_count >= 1

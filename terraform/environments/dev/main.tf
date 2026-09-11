@@ -1,8 +1,8 @@
 module "vpc" {
   source = "../../modules/vpc"
 
-  project_name = "observastack"
-  environment  = "dev"
+  project_name = local.project_name
+  environment  = local.environment
 
   vpc_cidr = "10.10.0.0/16"
 
@@ -11,9 +11,11 @@ module "vpc" {
     "us-east-1b"
   ]
 
-  s3_endpoint_bucket_arns = [
-    "arn:aws:s3:::emmy-github-webdev-observastack"
-  ]
+  enable_nat_gateway      = true
+  single_nat_gateway      = true
+  enable_vpc_endpoints    = true
+  enable_flow_logs        = true
+  flow_logs_retention_days = 7
 
   tags = local.common_tags
 }
@@ -21,8 +23,10 @@ module "vpc" {
 module "kms" {
   source = "../../modules/kms"
 
-  project_name = "observastack"
-  environment  = "dev"
+  project_name           = local.project_name
+  environment            = local.environment
+  description            = "ObservaStack development customer-managed KMS key."
+  deletion_window_in_days = 7
 
   tags = local.common_tags
 }
@@ -30,21 +34,8 @@ module "kms" {
 module "iam" {
   source = "../../modules/iam"
 
-  project_name = "observastack"
-  environment  = "dev"
-
-  # create_eks_cluster_role     = true
-  # create_eks_node_role        = true
-  # create_load_balancer_role   = true
-  # create_external_secrets_role = true
-  # create_application_roles    = true
-
-  application_names = [
-    "user-service",
-    "product-service",
-    "order-service",
-    "payment-service"
-  ]
+  project_name = local.project_name
+  environment  = local.environment
 
   tags = local.common_tags
 }
@@ -52,8 +43,8 @@ module "iam" {
 module "eks" {
   source = "../../modules/eks"
 
-  project_name = "observastack"
-  environment  = "dev"
+  project_name = local.project_name
+  environment  = local.environment
 
   kubernetes_version = "1.35"
 
@@ -81,9 +72,9 @@ module "eks" {
 
   node_group_capacity_type = "ON_DEMAND"
 
-  node_group_min_size     = 2
+  node_group_min_size     = 1
   node_group_desired_size = 2
-  node_group_max_size     = 4
+  node_group_max_size     = 3
 
   node_group_disk_size = 50
 
@@ -93,8 +84,8 @@ module "eks" {
 module "rds" {
   source              = "../../modules/rds"
   vpc_id              = module.vpc.vpc_id
-  project_name        = "observastack"
-  environment         = "dev"
+  project_name        = local.project_name
+  environment         = local.environment
   kms_key_arn         = module.kms.key_arn
   database_subnet_ids = module.vpc.database_subnet_ids
   tags                = local.common_tags
@@ -103,8 +94,8 @@ module "rds" {
 module "redis" {
   source = "../../modules/redis"
 
-  project_name     = "observastack"
-  environment      = "dev"
+  project_name     = local.project_name
+  environment      = local.environment
   vpc_id           = module.vpc.vpc_id
   cache_subnet_ids = module.vpc.database_subnet_ids
   kms_key_arn      = module.kms.key_arn
@@ -114,8 +105,8 @@ module "redis" {
 module "secrets" {
   source = "../../modules/secrets"
 
-  project_name = "observastack"
-  environment  = "dev"
+  project_name = local.project_name
+  environment  = local.environment
   kms_key_arn  = module.kms.key_arn
 
   recovery_window_in_days = 14
@@ -147,11 +138,11 @@ module "secrets" {
 module "observability" {
   source = "../../modules/observability"
 
-  project_name = "observastack"
-  environment  = "dev"
+  project_name = local.project_name
+  environment  = local.environment
 
   kms_key_arn        = module.kms.key_arn
-  log_retention_days = 30
+  log_retention_days = 7
 
   create_alarms    = true
   create_dashboard = true
