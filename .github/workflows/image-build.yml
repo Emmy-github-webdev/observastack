@@ -7,6 +7,7 @@ on:
     paths:
       - "services/**"
       - ".github/workflows/image-build.yml"
+
   workflow_dispatch:
     inputs:
       service:
@@ -22,17 +23,20 @@ on:
 permissions:
   contents: read
   id-token: write
-  packages: read
+
+concurrency:
+  group: image-build-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
-  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
 
 jobs:
   build:
-    name: Build and publish ${{ inputs.service || 'changed services' }}
+    name: Build ${{ matrix.service }}
     runs-on: ubuntu-latest
-    environment: dev
+
     strategy:
       fail-fast: false
       matrix:
@@ -43,70 +47,82 @@ jobs:
           - payment-service
 
     steps:
-      - uses: actions/checkout@v6.0.2
+      - name: Checkout
+        uses: actions/checkout@v6
 
-      - name: Select service
-        id: select
+      - name: Check whether service should build
+        id: service
         shell: bash
         run: |
+          set -euo pipefail
+
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            if [[ "${{ inputs.service }}" != "${{ matrix.service }}" ]]; then
-              echo "build=false" >> "$GITHUB_OUTPUT"
-            else
+            if [[ "${{ inputs.service }}" == "${{ matrix.service }}" ]]; then
               echo "build=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "build=false" >> "$GITHUB_OUTPUT"
             fi
             exit 0
           fi
 
-          if [[ "${{ github.event_name }}" == "push" ]]; then
-            if git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" | grep -q "^services/${{ matrix.service }}/"; then
-              echo "build=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "build=false" >> "$GITHUB_OUTPUT"
-            fi
+          # Push event:
+          # The workflow itself already guarantees that something
+          # under services/** or this workflow changed.
+          #
+          # We still need to determine which matrix entries changed.
+          if git diff --name-only \
+              "${{ github.event.before }}" \
+              "${{ github.sha }}" |
+              grep -q "^services/${{ matrix.service }}/"; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Configure AWS credentials
-        if: steps.select.outputs.build == 'true'
+        if: steps.service.outputs.build == 'true'
         uses: aws-actions/configure-aws-credentials@v6.2.3
         with:
           role-to-assume: ${{ vars.DEV_RELEASE_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-          role-session-name: image-build-${{ matrix.service }}-${{ github.run_id }}
-          allowed-account-ids: ${{ env.AWS_ACCOUNT_ID }}
+          role-session-name: gha-image-build-${{ matrix.service }}-${{ github.run_id }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
 
-      - name: Login to ECR
-        if: steps.select.outputs.build == 'true'
-        id: ecr
+      - name: Login to Amazon ECR
+        if: steps.service.outputs.build == 'true'
         uses: aws-actions/amazon-ecr-login@v2
-        with:
-          mask-password: true
 
-      - name: Set image metadata
-        if: steps.select.outputs.build == 'true'
-        id: meta
+      - name: Set image
+        if: steps.service.outputs.build == 'true'
+        id: image
         shell: bash
         run: |
           set -euo pipefail
-          echo "repository=${{ vars.ECR_REGISTRY }}/${{ matrix.service }}" >> "$GITHUB_OUTPUT"
-          echo "tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
-      - name: Build image
-        if: steps.select.outputs.build == 'true'
-        env:
-          IMAGE_REPOSITORY: ${{ steps.meta.outputs.repository }}
-          IMAGE_TAG: ${{ steps.meta.outputs.tag }}
-        run: |
-          docker build \
-            --file "services/${{ matrix.service }}/Dockerfile" \
-            --tag "${IMAGE_REPOSITORY}:${IMAGE_TAG}" \
-            "services/${{ matrix.service }}"
+          repository="${ECR_REGISTRY}/${{ matrix.service }}"
+          tag="${GITHUB_SHA}"
+
+          echo "repository=${repository}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "image=${repository}:${tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push image
+        if: steps.service.outputs.build == 'true'
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: services/${{ matrix.service }}
+          file: services/${{ matrix.service }}/Dockerfile
+          push: true
+          tags: ${{ steps.image.outputs.image }}
+          provenance: true
+          sbom: true
 
       - name: Scan image
-        if: steps.select.outputs.build == 'true'
-        uses: aquasecurity/trivy-action@0.33.1
+        if: steps.service.outputs.build == 'true'
+        uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ steps.meta.outputs.repository }}:${{ steps.meta.outputs.tag }}
+          image-ref: ${{ steps.image.outputs.image }}
           format: table
           exit-code: "1"
           ignore-unfixed: true
@@ -114,42 +130,31 @@ jobs:
           scanners: vuln,secret
 
       - name: Generate SBOM
-        if: steps.select.outputs.build == 'true'
-        uses: aquasecurity/trivy-action@0.33.1
+        if: steps.service.outputs.build == 'true'
+        uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ steps.meta.outputs.repository }}:${{ steps.meta.outputs.tag }}
+          image-ref: ${{ steps.image.outputs.image }}
           format: cyclonedx
           output: sbom-${{ matrix.service }}.json
           scanners: vuln
 
-      - name: Push image
-        if: steps.select.outputs.build == 'true'
-        env:
-          IMAGE_REPOSITORY: ${{ steps.meta.outputs.repository }}
-          IMAGE_TAG: ${{ steps.meta.outputs.tag }}
-        run: docker push "${IMAGE_REPOSITORY}:${IMAGE_TAG}"
-
-      - name: Resolve image digest
-        if: steps.select.outputs.build == 'true'
-        id: digest
-        env:
-          IMAGE_REPOSITORY: ${{ steps.meta.outputs.repository }}
-          IMAGE_TAG: ${{ steps.meta.outputs.tag }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          digest="$(aws ecr describe-images \
-            --repository-name "${{ matrix.service }}" \
-            --image-ids imageTag="${IMAGE_TAG}" \
-            --query 'imageDetails[0].imageDigest' \
-            --output text)"
-          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
-          echo "IMAGE_DIGEST=${digest}" >> "$GITHUB_STEP_SUMMARY"
-
       - name: Upload SBOM
-        if: steps.select.outputs.build == 'true'
+        if: steps.service.outputs.build == 'true'
         uses: actions/upload-artifact@v5
         with:
           name: sbom-${{ matrix.service }}-${{ github.sha }}
           path: sbom-${{ matrix.service }}.json
           retention-days: 30
+
+      - name: Publish build summary
+        if: steps.service.outputs.build == 'true'
+        shell: bash
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          {
+            echo "### ${{ matrix.service }}"
+            echo
+            echo "- Image: \`${{ steps.image.outputs.image }}\`"
+            echo "- Digest: \`${IMAGE_DIGEST}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
