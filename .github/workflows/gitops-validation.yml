@@ -6,6 +6,7 @@ on:
       - "gitops/**"
       - "kubernetes/**"
       - ".github/workflows/gitops-validation.yml"
+      - ".yamllint"
   push:
     branches:
       - main
@@ -13,47 +14,98 @@ on:
       - "gitops/**"
       - "kubernetes/**"
       - ".github/workflows/gitops-validation.yml"
+      - ".yamllint"
 
 permissions:
   contents: read
+
+concurrency:
+  group: gitops-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  KUBECONFORM_VERSION: "0.7.0"
 
 jobs:
   yaml:
     name: YAML validation
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v6.0.2
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+          cache: "pip"
 
       - name: Install yamllint
-        run: python -m pip install --upgrade yamllint
+        run: python -m pip install --disable-pip-version-check yamllint
 
       - name: Validate YAML
         shell: bash
         run: |
           set -euo pipefail
-          find gitops kubernetes -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 |
-            xargs -0 -r yamllint -d relaxed
+
+          mapfile -d '' files < <(
+            find gitops kubernetes \
+              -type f \
+              \( -name '*.yaml' -o -name '*.yml' \) \
+              -print0
+          )
+
+          if (( ${#files[@]} == 0 )); then
+            echo "No YAML files found."
+            exit 0
+          fi
+
+          yamllint "${files[@]}"
 
   kubernetes:
     name: Kubernetes manifest validation
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v6.0.2
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
 
       - name: Install kubeconform
+        shell: bash
         run: |
-          curl -fsSL -o /tmp/kubeconform.tar.gz \
-            https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz
+          set -euo pipefail
+
+          curl -fsSL \
+            -o /tmp/kubeconform.tar.gz \
+            "https://github.com/yannh/kubeconform/releases/download/v${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz"
+
           tar -xzf /tmp/kubeconform.tar.gz -C /tmp
-          sudo mv /tmp/kubeconform /usr/local/bin/kubeconform
+
+          sudo install -m 0755 \
+            /tmp/kubeconform \
+            /usr/local/bin/kubeconform
+
+          kubeconform -v
 
       - name: Validate Kubernetes manifests
         shell: bash
         run: |
           set -euo pipefail
-          if find kubernetes gitops -type f \( -name '*.yaml' -o -name '*.yml' \) | grep -q .; then
-            find kubernetes gitops -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 |
-              xargs -0 kubeconform -strict -ignore-missing-schemas
-          else
-            echo "No Kubernetes YAML files found yet."
+
+          mapfile -d '' files < <(
+            find kubernetes gitops \
+              -type f \
+              \( -name '*.yaml' -o -name '*.yml' \) \
+              -print0
+          )
+
+          if (( ${#files[@]} == 0 )); then
+            echo "No Kubernetes YAML files found."
+            exit 0
           fi
+
+          kubeconform \
+            -strict \
+            -ignore-missing-schemas \
+            "${files[@]}"
