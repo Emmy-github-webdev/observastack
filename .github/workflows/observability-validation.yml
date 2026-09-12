@@ -7,7 +7,10 @@ on:
       - "kubernetes/observability/**"
       - "gitops/observability/**"
       - "dashboards/**"
+      - "terraform/modules/observability/**"
       - ".github/workflows/observability-validation.yml"
+      - ".yamllint"
+
   push:
     branches:
       - main
@@ -16,55 +19,531 @@ on:
       - "kubernetes/observability/**"
       - "gitops/observability/**"
       - "dashboards/**"
+      - "terraform/modules/observability/**"
       - ".github/workflows/observability-validation.yml"
+      - ".yamllint"
 
 permissions:
   contents: read
 
+concurrency:
+  group: observability-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TERRAFORM_VERSION: "1.13.3"
+  KUBECONFORM_VERSION: "0.7.0"
+  KUBE_LINTER_VERSION: "0.7.2"
+
 jobs:
+
+  # ==============================================================
+  # Generic YAML validation
+  # ==============================================================
+
   yaml:
-    name: Observability YAML validation
+    name: YAML validation
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v6.0.2
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+          cache: pip
 
       - name: Install yamllint
-        run: python -m pip install --upgrade yamllint
+        run: |
+          python -m pip install \
+            --disable-pip-version-check \
+            yamllint
 
-      - name: Validate observability YAML
+      - name: Validate YAML
         shell: bash
         run: |
           set -euo pipefail
+
           paths=()
-          for dir in observability kubernetes/observability gitops/observability; do
-            [[ -d "$dir" ]] && paths+=("$dir")
+
+          for dir in \
+            observability \
+            kubernetes/observability \
+            gitops/observability
+          do
+            [[ -d "${dir}" ]] && paths+=("${dir}")
           done
 
-          if ((${#paths[@]} == 0)); then
-            echo "No observability directories found yet."
+          if (( ${#paths[@]} == 0 )); then
+            echo "No observability directories found."
             exit 0
           fi
 
-          find "${paths[@]}" -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 |
-            xargs -0 -r yamllint -d relaxed
+          mapfile -d '' files < <(
+            find "${paths[@]}" \
+              -type f \
+              \( -name '*.yaml' -o -name '*.yml' \) \
+              -print0
+          )
 
-  json:
-    name: Dashboard JSON validation
+          if (( ${#files[@]} == 0 )); then
+            echo "No YAML files found."
+            exit 0
+          fi
+
+          yamllint "${files[@]}"
+
+
+  # ==============================================================
+  # Grafana dashboards
+  # ==============================================================
+
+  dashboards:
+    name: Grafana dashboard validation
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v6.0.2
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
 
       - name: Validate dashboard JSON
         shell: bash
         run: |
           set -euo pipefail
 
-          if [[ -d dashboards ]]; then
-            find dashboards -type f -name '*.json' -print0 |
-              while IFS= read -r -d '' file; do
-                python -m json.tool "$file" >/dev/null
-                echo "Valid: $file"
-              done
-          else
-            echo "No dashboards directory found yet."
+          [[ -d dashboards ]] || {
+            echo "No dashboards directory found."
+            exit 0
+          }
+
+          mapfile -d '' files < <(
+            find dashboards \
+              -type f \
+              -name '*.json' \
+              -print0
+          )
+
+          if (( ${#files[@]} == 0 )); then
+            echo "No dashboard JSON files found."
+            exit 0
           fi
+
+          for file in "${files[@]}"; do
+            python -m json.tool "${file}" >/dev/null
+            echo "Valid JSON: ${file}"
+
+            # Basic Grafana dashboard invariants.
+            jq -e '
+              type == "object" and
+              (
+                has("dashboard") or
+                has("panels") or
+                has("uid") or
+                has("title")
+              )
+            ' "${file}" >/dev/null
+
+            echo "Valid Grafana structure: ${file}"
+          done
+
+
+  # ==============================================================
+  # Terraform
+  # ==============================================================
+
+  terraform:
+    name: Terraform validation
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: terraform/modules/observability
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Check formatting
+        run: terraform fmt -check -recursive
+
+      - name: Initialize Terraform
+        run: terraform init -backend=false
+
+      - name: Validate Terraform
+        run: terraform validate
+
+
+  # ==============================================================
+  # Kubernetes
+  # ==============================================================
+
+  kubernetes:
+    name: Kubernetes validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Install kubeconform
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl -fsSL \
+            -o /tmp/kubeconform.tar.gz \
+            "https://github.com/yannh/kubeconform/releases/download/v${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz"
+
+          tar -xzf /tmp/kubeconform.tar.gz -C /tmp
+
+          sudo install -m 0755 \
+            /tmp/kubeconform \
+            /usr/local/bin/kubeconform
+
+      - name: Validate Kubernetes manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          paths=()
+
+          [[ -d kubernetes/observability ]] &&
+            paths+=(kubernetes/observability)
+
+          [[ -d gitops/observability ]] &&
+            paths+=(gitops/observability)
+
+          if (( ${#paths[@]} == 0 )); then
+            echo "No Kubernetes observability directories found."
+            exit 0
+          fi
+
+          mapfile -d '' files < <(
+            find "${paths[@]}" \
+              -type f \
+              \( -name '*.yaml' -o -name '*.yml' \) \
+              -print0
+          )
+
+          if (( ${#files[@]} == 0 )); then
+            echo "No Kubernetes manifests found."
+            exit 0
+          fi
+
+          kubeconform \
+            -strict \
+            -summary \
+            -output pretty \
+            -schema-location default \
+            -ignore-missing-schemas \
+            "${files[@]}"
+
+
+  # ==============================================================
+  # Kubernetes best practices
+  # ==============================================================
+
+  kube-linter:
+    name: Kubernetes best-practice validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Install kube-linter
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl -fsSL \
+            "https://github.com/stackrox/kube-linter/releases/download/v${KUBE_LINTER_VERSION}/kube-linter-linux.tar.gz" \
+            -o /tmp/kube-linter.tar.gz
+
+          tar -xzf /tmp/kube-linter.tar.gz -C /tmp
+
+          sudo install -m 0755 \
+            /tmp/kube-linter \
+            /usr/local/bin/kube-linter
+
+      - name: Lint Kubernetes manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          paths=()
+
+          [[ -d kubernetes/observability ]] &&
+            paths+=(kubernetes/observability)
+
+          [[ -d gitops/observability ]] &&
+            paths+=(gitops/observability)
+
+          if (( ${#paths[@]} == 0 )); then
+            echo "No Kubernetes observability directories found."
+            exit 0
+          fi
+
+          kube-linter lint "${paths[@]}"
+
+
+  # ==============================================================
+  # Prometheus
+  # ==============================================================
+
+  prometheus:
+    name: Prometheus validation
+    runs-on: ubuntu-latest
+
+    container:
+      image: prom/prometheus:"3.9.0"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Validate Prometheus configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          config="observability/prometheus/prometheus.yml"
+
+          if [[ ! -f "${config}" ]]; then
+            echo "No Prometheus config found."
+            exit 0
+          fi
+
+          promtool check config \
+            --lint-fatal \
+            "${config}"
+
+      - name: Validate Prometheus rules
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          shopt -s nullglob
+
+          rules=(
+            observability/prometheus/rules/*.yml
+            observability/prometheus/rules/*.yaml
+          )
+
+          if (( ${#rules[@]} == 0 )); then
+            echo "No Prometheus rule files found."
+            exit 0
+          fi
+
+          promtool check rules \
+            --lint-fatal \
+            "${rules[@]}"
+
+      - name: Run Prometheus rule unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          shopt -s nullglob
+
+          tests=(
+            observability/prometheus/tests/*.yml
+            observability/prometheus/tests/*.yaml
+          )
+
+          if (( ${#tests[@]} == 0 )); then
+            echo "No Prometheus rule tests found."
+            exit 0
+          fi
+
+          for test_file in "${tests[@]}"; do
+            echo "Running: ${test_file}"
+            promtool test rules "${test_file}"
+          done
+
+
+  # ==============================================================
+  # Alertmanager
+  # ==============================================================
+
+  alertmanager:
+    name: Alertmanager validation
+    runs-on: ubuntu-latest
+
+    container:
+      image: prom/alertmanager:"0.31.0"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Validate Alertmanager configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          config="observability/alertmanager/alertmanager.yml"
+
+          if [[ ! -f "${config}" ]]; then
+            echo "No Alertmanager config found."
+            exit 0
+          fi
+
+          amtool check-config "${config}"
+
+
+  # ==============================================================
+  # Loki
+  # ==============================================================
+
+  loki:
+    name: Loki validation
+    runs-on: ubuntu-latest
+
+    container:
+      image: grafana/loki:"3.7.0"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Validate Loki configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          config="observability/loki/loki.yaml"
+
+          if [[ ! -f "${config}" ]]; then
+            echo "No Loki config found."
+            exit 0
+          fi
+
+          loki \
+            -config.file="${config}" \
+            -verify-config=true
+
+
+  # ==============================================================
+  # Tempo
+  # ==============================================================
+
+  tempo:
+    name: Tempo validation
+    runs-on: ubuntu-latest
+
+    container:
+      image: grafana/tempo:"2.8.0"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Validate Tempo configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          config="observability/tempo/tempo.yaml"
+
+          if [[ ! -f "${config}" ]]; then
+            echo "No Tempo config found."
+            exit 0
+          fi
+
+          tempo \
+            --config.file="${config}" \
+            --config.verify
+
+
+  # ==============================================================
+  # OpenTelemetry Collector
+  # ==============================================================
+
+  opentelemetry:
+    name: OpenTelemetry validation
+    runs-on: ubuntu-latest
+
+    container:
+      image: otel/opentelemetry-collector-contrib:"0.136.0"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Validate OpenTelemetry Collector configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          shopt -s nullglob
+
+          configs=(
+            observability/opentelemetry/*.yaml
+            observability/opentelemetry/*.yml
+          )
+
+          if (( ${#configs[@]} == 0 )); then
+            echo "No OpenTelemetry Collector configs found."
+            exit 0
+          fi
+
+          for config in "${configs[@]}"; do
+            echo "Validating: ${config}"
+
+            otelcol-contrib validate \
+              --config="${config}"
+          done
+
+
+  # ==============================================================
+  # Summary
+  # ==============================================================
+
+  summary:
+    name: Observability validation complete
+    if: ${{ always() }}
+    needs:
+      - yaml
+      - dashboards
+      - terraform
+      - kubernetes
+      - kube-linter
+      - prometheus
+      - alertmanager
+      - loki
+      - tempo
+      - opentelemetry
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Report result
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Observability validation jobs completed."
+
+          if [[ "${{ needs.yaml.result }}" != "success" ||
+                "${{ needs.dashboards.result }}" != "success" ||
+                "${{ needs.terraform.result }}" != "success" ||
+                "${{ needs.kubernetes.result }}" != "success" ||
+                "${{ needs.kube-linter.result }}" != "success" ||
+                "${{ needs.prometheus.result }}" != "success" ||
+                "${{ needs.alertmanager.result }}" != "success" ||
+                "${{ needs.loki.result }}" != "success" ||
+                "${{ needs.tempo.result }}" != "success" ||
+                "${{ needs.opentelemetry.result }}" != "success" ]]; then
+            echo "::error::One or more observability validation jobs failed."
+            exit 1
+          fi
+
+          echo "All observability validation checks passed."
