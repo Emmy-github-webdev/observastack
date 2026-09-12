@@ -10,14 +10,43 @@ on:
 
 permissions:
   contents: read
-  security-events: write
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TERRAFORM_VERSION: "1.13.3"
 
 jobs:
-  secrets:
-    name: Secret detection
+
+  # ==============================================================
+  # Secret detection
+  # ==============================================================
+
+  gitleaks:
+    name: Gitleaks secret detection
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v6.0.2
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+  trufflehog:
+    name: TruffleHog secret detection
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
 
@@ -26,11 +55,18 @@ jobs:
         with:
           extra_args: --only-verified
 
-  iac:
-    name: IaC security
+
+  # ==============================================================
+  # Filesystem / IaC security
+  # ==============================================================
+
+  trivy:
+    name: Trivy filesystem security
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v6.0.2
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
 
       - name: Trivy filesystem scan
         uses: aquasecurity/trivy-action@master
@@ -39,30 +75,66 @@ jobs:
           scan-ref: .
           scanners: vuln,secret,misconfig
           severity: HIGH,CRITICAL
-          exit-code: "1"
           ignore-unfixed: true
+          exit-code: "1"
+
+
+  # ==============================================================
+  # Terraform
+  # ==============================================================
 
   terraform:
     name: Terraform security
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v6.0.2
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform formatting
+        run: terraform fmt -check -recursive terraform
+
+      - name: Terraform initialization
+        working-directory: terraform
+        run: terraform init -backend=false
+
+      - name: Terraform validation
+        working-directory: terraform
+        run: terraform validate
 
       - name: Install Checkov
-        run: python -m pip install --upgrade checkov
+        run: |
+          python -m pip install \
+            --disable-pip-version-check \
+            checkov
 
       - name: Checkov
-        run: checkov -d terraform --quiet
-        # run: checkov -d terraform --quiet --soft-fail # for testing purposes, remove --soft-fail in production
+        run: |
+          checkov \
+            -d terraform \
+            --quiet
+
+
+  # ==============================================================
+  # Dependency review
+  # ==============================================================
 
   dependency-review:
     name: Dependency review
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+
     permissions:
       contents: read
+
     steps:
-      - uses: actions/checkout@v6.0.2
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
 
       - name: Dependency review
         uses: actions/dependency-review-action@v4
