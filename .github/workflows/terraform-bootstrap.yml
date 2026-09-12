@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       operation:
-        description: "Terraform operation"
+        description: Terraform operation
         required: true
         type: choice
         options:
@@ -14,7 +14,7 @@ on:
         default: plan
 
       environment:
-        description: "Environment whose backend path should be initialized"
+        description: Environment whose backend is being managed
         required: true
         type: choice
         options:
@@ -24,119 +24,109 @@ on:
         default: dev
 
       confirm_destroy:
-        description: 'Required only for destroy. Enter "DESTROY" to continue.'
+        description: Type DESTROY to authorize backend destruction
         required: false
         type: string
         default: ""
-
-      force_reconcile:
-        description: "Reserved for future bootstrap reconciliation controls"
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: read
   id-token: write
 
 concurrency:
-  group: terraform-backend-bootstrap
+  group: terraform-backend-bootstrap-${{ inputs.environment }}
   cancel-in-progress: false
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
-  TERRAFORM_STATE_BUCKET: ${{ vars.TERRAFORM_STATE_BUCKET }}
-  TERRAFORM_STATE_PREFIX: observastack
-  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
 
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
+  TF_CLI_ARGS: "-no-color"
 
   TERRAFORM_VERSION: "1.14.6"
+  TF_ROOT: terraform/global/backend
 
 jobs:
-  validate:
-    name: Validate Bootstrap Configuration
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
 
-    outputs:
-      operation: ${{ steps.config.outputs.operation }}
-      environment: ${{ steps.config.outputs.environment }}
+  # ============================================================
+  # Validate workflow configuration
+  # ============================================================
+
+  validate:
+    name: Validate bootstrap configuration
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
-      - name: Validate workflow configuration
-        id: config
+      - name: Validate configuration
         shell: bash
         run: |
           set -euo pipefail
 
           : "${AWS_REGION:?Repository variable AWS_REGION is required}"
-          : "${TERRAFORM_STATE_BUCKET:?Repository variable TERRAFORM_STATE_BUCKET is required}"
-          : "${AWS_ACCOUNT_ID:?Repository variable AWS_ACCOUNT_ID is required}"
 
-          operation="${{ inputs.operation }}"
-          environment="${{ inputs.environment }}"
-          confirm_destroy="${{ inputs.confirm_destroy }}"
-
-          echo "Operation: ${operation}"
-          echo "Environment: ${environment}"
-          echo "AWS Region: ${AWS_REGION}"
-          echo "State Bucket: ${TERRAFORM_STATE_BUCKET}"
-
-          if [[ ! "${TERRAFORM_STATE_BUCKET}" =~ ^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$ ]]; then
-            echo "::error::Invalid S3 bucket name: ${TERRAFORM_STATE_BUCKET}"
+          if [[ ! -d "${TF_ROOT}" ]]; then
+            echo "::error::Terraform root does not exist: ${TF_ROOT}"
             exit 1
           fi
 
-          if [[ "${operation}" == "destroy" ]]; then
-            if [[ "${confirm_destroy}" != "DESTROY" ]]; then
-              echo "::error::Destroy requested but confirm_destroy is not exactly DESTROY."
-              echo "::error::Enter DESTROY explicitly to authorize backend destruction."
+          for file in \
+            "${TF_ROOT}/main.tf" \
+            "${TF_ROOT}/versions.tf"
+          do
+            if [[ ! -f "${file}" ]]; then
+              echo "::error::Required Terraform file is missing: ${file}"
               exit 1
             fi
+          done
 
-            echo "::warning::Terraform backend destruction has been explicitly requested."
-          fi
+          case "${{ inputs.operation }}" in
+            plan|apply)
+              ;;
 
-          if [[ ! -d "terraform/global/backend" ]]; then
-            echo "::error::terraform/global/backend does not exist."
-            exit 1
-          fi
+            destroy)
+              if [[ "${{ inputs.confirm_destroy }}" != "DESTROY" ]]; then
+                echo "::error::Destroy requires confirm_destroy=DESTROY."
+                exit 1
+              fi
 
-          if [[ ! -f "terraform/global/backend/main.tf" ]]; then
-            echo "::error::terraform/global/backend/main.tf does not exist."
-            exit 1
-          fi
+              echo "::warning::Terraform backend destruction explicitly authorized."
 
-          if [[ ! -f "terraform/global/backend/versions.tf" ]]; then
-            echo "::error::terraform/global/backend/versions.tf does not exist."
-            exit 1
-          fi
+              if [[ "${{ inputs.environment }}" == "production" ]]; then
+                echo "::warning::PRODUCTION BACKEND DESTRUCTION REQUESTED."
+              fi
+              ;;
 
-          echo "operation=${operation}" >> "$GITHUB_OUTPUT"
-          echo "environment=${environment}" >> "$GITHUB_OUTPUT"
+            *)
+              echo "::error::Invalid operation."
+              exit 1
+              ;;
+          esac
 
-      - name: Display Terraform bootstrap structure
+      - name: Write configuration summary
         shell: bash
         run: |
-          set -euo pipefail
+          {
+            echo "### Terraform Backend Bootstrap"
+            echo
+            echo "- Operation: \`${{ inputs.operation }}\`"
+            echo "- Environment: \`${{ inputs.environment }}\`"
+            echo "- Terraform: \`${TERRAFORM_VERSION}\`"
+            echo "- Root: \`${TF_ROOT}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
 
-          echo "Terraform global backend module:"
-          find terraform/global/backend \
-            -maxdepth 2 \
-            -type f \
-            -print \
-            | sort
+
+  # ============================================================
+  # Generate immutable plan
+  # ============================================================
 
   plan:
     name: Terraform ${{ inputs.operation }}
     needs: validate
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
 
     permissions:
       contents: read
@@ -152,13 +142,13 @@ jobs:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
 
-      - name: Configure AWS credentials via OIDC
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6.2.3
         with:
           role-to-assume: ${{ vars.TERRAFORM_BOOTSTRAP_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-          role-session-name: github-actions-bootstrap-${{ github.run_id }}
-          allowed-account-ids: ${{ env.AWS_ACCOUNT_ID }}
+          role-session-name: terraform-backend-plan-${{ github.run_id }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
 
       - name: Verify AWS identity
         run: |
@@ -166,50 +156,42 @@ jobs:
           aws sts get-caller-identity
 
       - name: Terraform version
-        working-directory: terraform/global/backend
         run: terraform version
 
       - name: Terraform format check
-        working-directory: terraform/global/backend
-        run: |
-          terraform fmt \
-            -check \
-            -recursive \
-            -no-color
+        working-directory: ${{ env.TF_ROOT }}
+        run: terraform fmt -check -recursive -no-color
 
+      # Bootstrap module must NOT initialize the backend it creates.
       - name: Terraform init
-        working-directory: terraform/global/backend
+        working-directory: ${{ env.TF_ROOT }}
         run: |
           terraform init \
+            -backend=false \
             -input=false \
             -no-color
 
       - name: Terraform validate
-        working-directory: terraform/global/backend
-        run: |
-          terraform validate \
-            -no-color
+        working-directory: ${{ env.TF_ROOT }}
+        run: terraform validate -no-color
 
       - name: Terraform plan
-        id: terraform-plan
-        working-directory: terraform/global/backend
+        working-directory: ${{ env.TF_ROOT }}
         env:
           TF_VAR_aws_region: ${{ env.AWS_REGION }}
-          TF_VAR_bucket_name: ${{ env.TERRAFORM_STATE_BUCKET }}
+          TF_VAR_environment: ${{ inputs.environment }}
         run: |
           set -euo pipefail
 
-          operation="${{ inputs.operation }}"
-
-          if [[ "${operation}" == "destroy" ]]; then
-            echo "::warning::Generating a DESTROY plan for the Terraform backend."
+          if [[ "${{ inputs.operation }}" == "destroy" ]]; then
+            echo "::warning::Generating Terraform DESTROY plan."
+            echo "::warning::Environment: ${{ inputs.environment }}"
 
             terraform plan \
               -destroy \
               -out=tfplan \
               -input=false \
               -no-color
-
           else
             terraform plan \
               -out=tfplan \
@@ -218,47 +200,53 @@ jobs:
           fi
 
       - name: Show Terraform plan
-        working-directory: terraform/global/backend
+        working-directory: ${{ env.TF_ROOT }}
         run: |
           terraform show \
             -no-color \
             tfplan
 
-      - name: Save Terraform plan
-        uses: actions/upload-artifact@v5
-        with:
-          name: terraform-bootstrap-plan-${{ github.run_id }}
-          path: terraform/global/backend/tfplan
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Save Terraform plan summary
-        working-directory: terraform/global/backend
-        shell: bash
+      - name: Generate plan summary
+        working-directory: ${{ env.TF_ROOT }}
         run: |
-          set -euo pipefail
-
           terraform show \
             -no-color \
             tfplan \
-            > "${GITHUB_WORKSPACE}/terraform-bootstrap-plan.txt"
+            > "${GITHUB_WORKSPACE}/terraform-backend-plan.txt"
 
-      - name: Upload Terraform plan summary
-        uses: actions/upload-artifact@v5
+      - name: Upload Terraform plan
+        uses: actions/upload-artifact@v6
         with:
-          name: terraform-bootstrap-plan-summary-${{ github.run_id }}
-          path: terraform-bootstrap-plan.txt
+          name: terraform-backend-plan-${{ inputs.environment }}-${{ github.run_id }}
+          path: ${{ env.TF_ROOT }}/tfplan
           if-no-files-found: error
           retention-days: 7
 
+      - name: Upload Terraform plan summary
+        uses: actions/upload-artifact@v6
+        with:
+          name: terraform-backend-plan-summary-${{ inputs.environment }}-${{ github.run_id }}
+          path: terraform-backend-plan.txt
+          if-no-files-found: error
+          retention-days: 7
+
+
+  # ============================================================
+  # Apply
+  # ============================================================
+
   apply:
-    name: Terraform Apply
+    name: Apply backend
     needs:
       - validate
       - plan
+
     if: inputs.operation == 'apply'
+
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+
+    environment:
+      name: ${{ inputs.environment }}
 
     permissions:
       contents: read
@@ -274,60 +262,81 @@ jobs:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
 
-      - name: Configure AWS credentials via OIDC
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6.2.3
         with:
           role-to-assume: ${{ vars.TERRAFORM_BOOTSTRAP_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-          role-session-name: github-actions-bootstrap-apply-${{ github.run_id }}
-          allowed-account-ids: ${{ env.AWS_ACCOUNT_ID }}
+          role-session-name: terraform-backend-apply-${{ github.run_id }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
 
       - name: Verify AWS identity
-        run: |
-          set -euo pipefail
-          aws sts get-caller-identity
+        run: aws sts get-caller-identity
 
       - name: Terraform init
-        working-directory: terraform/global/backend
+        working-directory: ${{ env.TF_ROOT }}
         run: |
           terraform init \
+            -backend=false \
             -input=false \
             -no-color
 
       - name: Download approved Terraform plan
         uses: actions/download-artifact@v6
         with:
-          name: terraform-bootstrap-plan-${{ github.run_id }}
-          path: terraform/global/backend
+          name: terraform-backend-plan-${{ inputs.environment }}-${{ github.run_id }}
+          path: ${{ env.TF_ROOT }}
 
-      - name: Verify Terraform plan file
-        working-directory: terraform/global/backend
+      - name: Verify plan
+        working-directory: ${{ env.TF_ROOT }}
+        shell: bash
         run: |
           set -euo pipefail
 
-          if [[ ! -f "tfplan" ]]; then
-            echo "::error::Terraform plan file tfplan was not found."
-            exit 1
-          fi
+          test -f tfplan
 
-          ls -lh tfplan
+          echo "Applying approved Terraform plan:"
+          terraform show -no-color tfplan
 
-      - name: Terraform apply
-        working-directory: terraform/global/backend
+      - name: Apply Terraform plan
+        working-directory: ${{ env.TF_ROOT }}
         run: |
           terraform apply \
             -input=false \
             -no-color \
             tfplan
 
+      - name: Write summary
+        run: |
+          {
+            echo "### Terraform Backend Applied"
+            echo
+            echo "- Environment: \`${{ inputs.environment }}\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Run: \`${GITHUB_RUN_ID}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+
+  # ============================================================
+  # Destroy
+  # ============================================================
+
   destroy:
-    name: Terraform Destroy
+    name: Destroy backend
     needs:
       - validate
       - plan
+
     if: inputs.operation == 'destroy'
+
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+
+    # IMPORTANT:
+    # Configure this GitHub Environment with required reviewers.
+    #
+    # For production, require manual approval here.
+    environment:
+      name: ${{ inputs.environment }}
 
     permissions:
       contents: read
@@ -343,65 +352,59 @@ jobs:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
 
-      - name: Configure AWS credentials via OIDC
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6.2.3
         with:
           role-to-assume: ${{ vars.TERRAFORM_BOOTSTRAP_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-          role-session-name: github-actions-bootstrap-destroy-${{ github.run_id }}
-          allowed-account-ids: ${{ env.AWS_ACCOUNT_ID }}
+          role-session-name: terraform-backend-destroy-${{ github.run_id }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
 
       - name: Verify AWS identity
-        run: |
-          set -euo pipefail
-          aws sts get-caller-identity
+        run: aws sts get-caller-identity
 
       - name: Terraform init
-        working-directory: terraform/global/backend
+        working-directory: ${{ env.TF_ROOT }}
         run: |
           terraform init \
+            -backend=false \
             -input=false \
             -no-color
 
       - name: Download approved destroy plan
         uses: actions/download-artifact@v6
         with:
-          name: terraform-bootstrap-plan-${{ github.run_id }}
-          path: terraform/global/backend
+          name: terraform-backend-plan-${{ inputs.environment }}-${{ github.run_id }}
+          path: ${{ env.TF_ROOT }}
 
-      - name: Verify Terraform destroy plan
-        working-directory: terraform/global/backend
+      - name: Verify destroy authorization
+        working-directory: ${{ env.TF_ROOT }}
+        shell: bash
         run: |
           set -euo pipefail
 
-          if [[ ! -f "tfplan" ]]; then
-            echo "::error::Terraform destroy plan file tfplan was not found."
-            exit 1
-          fi
+          test "${{ inputs.confirm_destroy }}" = "DESTROY"
+          test -f tfplan
 
-          echo "::warning::Terraform backend destruction is authorized."
-          echo "::warning::Confirmation value: DESTROY"
-          ls -lh tfplan
+          echo "::warning::DESTROY PLAN APPROVED."
+          echo "::warning::Environment: ${{ inputs.environment }}"
 
-      - name: Terraform destroy
-        working-directory: terraform/global/backend
+          terraform show -no-color tfplan
+
+      - name: Destroy Terraform backend
+        working-directory: ${{ env.TF_ROOT }}
         run: |
           terraform apply \
             -input=false \
             -no-color \
             tfplan
 
-      - name: Destroy verification
-        shell: bash
+      - name: Write summary
         run: |
-          set -euo pipefail
-
-          if aws s3api head-bucket \
-            --bucket "${TERRAFORM_STATE_BUCKET}" \
-            >/dev/null 2>&1; then
-
-            echo "::error::Terraform backend bucket still exists after destroy."
-            exit 1
-          fi
-
-          echo "Terraform backend bucket has been destroyed."
+          {
+            echo "### Terraform Backend Destroyed"
+            echo
+            echo "- Environment: \`${{ inputs.environment }}\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Run: \`${GITHUB_RUN_ID}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
