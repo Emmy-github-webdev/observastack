@@ -6,6 +6,7 @@ on:
       - "services/**"
       - "tests/services/**"
       - ".github/workflows/services-ci.yml"
+
   push:
     branches:
       - main
@@ -17,54 +18,305 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: services-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+
 jobs:
   services:
-    name: Validate services
+    name: ${{ matrix.service }}
     runs-on: ubuntu-latest
+
     strategy:
       fail-fast: false
       matrix:
-        service:
-          - user-service
-          - product-service
-          - order-service
-          - payment-service
+        include:
+          - service: user-service
+            language: java
+            context: services/user-service
+
+          - service: product-service
+            language: java
+            context: services/product-service
+
+          - service: order-service
+            language: java
+            context: services/order-service
+
+          - service: payment-service
+            language: java
+            context: services/payment-service
 
     steps:
-      - uses: actions/checkout@v6.0.2
+      # ============================================================
+      # Checkout
+      # ============================================================
 
-      - name: Detect service
-        id: changed
-        shell: bash
-        run: |
-          if [[ "${{ github.event_name }}" == "push" ]]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          elif git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" | grep -q "^services/${{ matrix.service }}/"; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      # ============================================================
+      # Validate service structure
+      # ============================================================
 
       - name: Validate service structure
-        if: steps.changed.outputs.changed == 'true'
+        working-directory: ${{ matrix.context }}
         shell: bash
         run: |
           set -euo pipefail
-          test -d "services/${{ matrix.service }}"
-          echo "Validating services/${{ matrix.service }}"
 
-          if [[ -f "services/${{ matrix.service }}/pom.xml" ]]; then
-            docker run --rm \
-              -v "$PWD/services/${{ matrix.service }}:/workspace" \
-              -w /workspace \
-              maven:3.9-eclipse-temurin-21 \
-              mvn -B test
-          elif [[ -f "services/${{ matrix.service }}/package.json" ]]; then
-            docker run --rm \
-              -v "$PWD/services/${{ matrix.service }}:/workspace" \
-              -w /workspace \
-              node:24-alpine \
-              sh -c "npm ci && npm test"
+          test -f Dockerfile
+
+          case "${{ matrix.language }}" in
+            java)
+              test -f pom.xml
+              ;;
+
+            node)
+              test -f package.json
+              ;;
+
+            python)
+              test -f pyproject.toml
+              ;;
+
+            *)
+              echo "::error::Unsupported language: ${{ matrix.language }}"
+              exit 1
+              ;;
+          esac
+
+      # ============================================================
+      # Java
+      # ============================================================
+
+      - name: Set up Java
+        if: matrix.language == 'java'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: ${{ matrix.context }}/pom.xml
+
+      - name: Run Maven verification
+        if: matrix.language == 'java'
+        working-directory: ${{ matrix.context }}
+        run: mvn -B verify
+
+      # ============================================================
+      # Node.js
+      # ============================================================
+
+      - name: Set up Node.js
+        if: matrix.language == 'node'
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: ${{ matrix.context }}/package-lock.json
+
+      - name: Run Node tests
+        if: matrix.language == 'node'
+        working-directory: ${{ matrix.context }}
+        run: |
+          set -euo pipefail
+          npm ci
+          npm test
+
+      # ============================================================
+      # Python
+      # ============================================================
+
+      - name: Set up Python
+        if: matrix.language == 'python'
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Run Python tests
+        if: matrix.language == 'python'
+        working-directory: ${{ matrix.context }}
+        run: |
+          set -euo pipefail
+
+          python -m pip install --upgrade pip
+          python -m pip install .
+
+          if [[ -d tests ]]; then
+            python -m pytest
           else
-            echo "No supported build descriptor found yet; structural validation passed."
+            echo "No Python tests directory found."
           fi
+
+      # ============================================================
+      # Dockerfile validation
+      # ============================================================
+
+      - name: Validate Dockerfile
+        working-directory: ${{ matrix.context }}
+        run: docker build --check .
+
+      # ============================================================
+      # Build image
+      #
+      # Build on BOTH PR and main.
+      #
+      # PR:
+      #   Build and scan only.
+      #
+      # main:
+      #   Build, scan, SBOM, then push.
+      # ============================================================
+
+      - name: Build image
+        working-directory: ${{ matrix.context }}
+        env:
+          IMAGE: local/${{ matrix.service }}:${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          docker build \
+            --pull \
+            --tag "${IMAGE}" \
+            .
+
+      # ============================================================
+      # Container security
+      # ============================================================
+
+      - name: Scan image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "local/${{ matrix.service }}:${{ github.sha }}"
+          scan-type: image
+          scanners: vuln,secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      # ============================================================
+      # Generate SBOM
+      #
+      # Generated from the exact image that was scanned.
+      # ============================================================
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: "local/${{ matrix.service }}:${{ github.sha }}"
+          format: spdx-json
+          output-file: "${{ runner.temp }}/${{ matrix.service }}-sbom.spdx.json"
+
+      # ============================================================
+      # AWS credentials
+      #
+      # Only main gets permission to publish.
+      # ============================================================
+
+      - name: Configure AWS credentials
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: ${{ vars.DEV_RELEASE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: services-ci-${{ matrix.service }}-${{ github.run_id }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+
+      # ============================================================
+      # ECR login
+      # ============================================================
+
+      - name: Login to ECR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          mask-password: true
+
+      # ============================================================
+      # Tag image for Dev ECR
+      # ============================================================
+
+      - name: Tag image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          LOCAL_IMAGE: local/${{ matrix.service }}:${{ github.sha }}
+          ECR_IMAGE: ${{ env.ECR_REGISTRY }}/${{ matrix.service }}:${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          docker tag \
+            "${LOCAL_IMAGE}" \
+            "${ECR_IMAGE}"
+
+      # ============================================================
+      # Push immutable image
+      # ============================================================
+
+      - name: Push image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          IMAGE: ${{ env.ECR_REGISTRY }}/${{ matrix.service }}:${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          docker push "${IMAGE}"
+
+      # ============================================================
+      # Resolve immutable digest
+      # ============================================================
+
+      - name: Resolve image digest
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: image
+        env:
+          SERVICE: ${{ matrix.service }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          digest="$(
+            aws ecr describe-images \
+              --repository-name "${SERVICE}" \
+              --image-ids "imageTag=${GITHUB_SHA}" \
+              --query 'imageDetails[0].imageDigest' \
+              --output text
+          )"
+
+          if [[ -z "${digest}" || "${digest}" == "None" ]]; then
+            echo "::error::Unable to resolve pushed image digest."
+            exit 1
+          fi
+
+          if [[ ! "${digest}" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "::error::Unexpected image digest: ${digest}"
+            exit 1
+          fi
+
+          echo "digest=${digest}" >> "${GITHUB_OUTPUT}"
+
+          {
+            echo "### Image published"
+            echo
+            echo "- Service: \`${SERVICE}\`"
+            echo "- Git SHA: \`${GITHUB_SHA}\`"
+            echo "- Image: \`${SERVICE}@${digest}\`"
+            echo "- Registry: Dev ECR"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      # ============================================================
+      # Upload SBOM
+      # ============================================================
+
+      - name: Upload SBOM
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.service }}-sbom-${{ github.sha }}
+          path: ${{ runner.temp }}/${{ matrix.service }}-sbom.spdx.json
+          if-no-files-found: error
+          retention-days: 30
