@@ -1,0 +1,23 @@
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: observastack-platform-critical
+  labels:
+    app.kubernetes.io/part-of: observastack
+    app.kubernetes.io/managed-by: gitops
+value: 100000
+preemptionPolicy: PreemptLowerPriority
+globalDefault: false
+description: "Priority for critical ObservaStack platform controllers and infrastructure components."
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: observastack-application
+  labels:
+    app.kubernetes.io/part-of: observastack
+    app.kubernetes.io/managed-by: gitops
+value: 10000
+preemptionPolicy: PreemptLowerPriority
+globalDefault: false
+description: "Priority for ObservaStack application workloads."
