@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: observastack-quota
+  namespace: observastack
+  labels:
+    app.kubernetes.io/part-of: observastack
+    app.kubernetes.io/managed-by: gitops
+spec:
+  hard:
+    requests.cpu: "8"
+    limits.cpu: "16"
+    requests.memory: 16Gi
+    limits.memory: 32Gi
+    pods: "40"
+    services: "20"
+    configmaps: "50"
+    secrets: "50"
+    persistentvolumeclaims: "10"
+    requests.storage: 200Gi
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: observability-quota
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: observastack
+    app.kubernetes.io/managed-by: gitops
+spec:
+  hard:
+    requests.cpu: "12"
+    limits.cpu: "24"
+    requests.memory: 24Gi
+    limits.memory: 48Gi
+    pods: "50"
+    services: "30"
+    configmaps: "100"
+    secrets: "100"
+    persistentvolumeclaims: "20"
+    requests.storage: 300Gi
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: platform-system-quota
+  namespace: platform-system
+  labels:
+    app.kubernetes.io/part-of: observastack
+    app.kubernetes.io/managed-by: gitops
+spec:
+  hard:
+    requests.cpu: "6"
+    limits.cpu: "12"
+    requests.memory: 12Gi
+    limits.memory: 24Gi
+    pods: "40"
+    services: "20"
+    configmaps: "50"
+    secrets: "50"
+    persistentvolumeclaims: "10"
+    requests.storage: 100Gi

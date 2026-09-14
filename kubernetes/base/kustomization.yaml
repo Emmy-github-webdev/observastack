@@ -6,3 +6,6 @@ resources:
   - namespaces/observability.yaml
   - namespaces/platform-system.yaml
   - config/priority-classes.yaml
+
+  - resource-policies/resource-quotas.yaml
+  - resource-policies/limit-ranges.yaml
