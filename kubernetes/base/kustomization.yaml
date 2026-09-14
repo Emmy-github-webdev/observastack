@@ -9,3 +9,7 @@ resources:
 
   - resource-policies/resource-quotas.yaml
   - resource-policies/limit-ranges.yaml
+  
+  - network-policies/default-deny.yaml
+  - network-policies/dns.yaml
+  - network-policies/namespace-traffic.yaml
