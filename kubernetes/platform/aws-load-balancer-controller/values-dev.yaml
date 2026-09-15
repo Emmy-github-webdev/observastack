@@ -1,0 +1,19 @@
+# AWS Load Balancer Controller values for ObservaStack dev.
+# Pin the chart version in the GitOps Application/Helm source.
+clusterName: observastack-dev
+region: us-east-1
+
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller
+
+replicaCount: 2
+enableServiceMutatorWebhook: true
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
