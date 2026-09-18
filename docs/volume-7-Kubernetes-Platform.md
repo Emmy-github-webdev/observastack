@@ -160,3 +160,107 @@ Quotas and LimitRanges are deferred to Step 7.3 because their values should be e
 - [x] No application manifests introduced
 
 ---
+
+Final architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ STEP 6 — TERRAFORM / AWS                                    │
+│                                                             │
+│ VPC │ EKS │ RDS │ Redis │ ECR │ IAM │ KMS │ Secrets Manager │
+│                                                             │
+│ Route 53 │ EKS Pod Identity │ AWS networking                │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│ STEP 7 — EKS / KUBERNETES PLATFORM                          │
+│                                                             │
+│ FOUNDATION                                                  │
+│ Namespaces │ Quotas │ Limits │ NetworkPolicy │ PSA          │
+│                                                             │
+│ PLATFORM                                                    │
+│ AWS LB Controller │ cert-manager │ External Secrets         │
+│ Autoscaling │ Storage │ Pod Identity                        │
+│                                                             │
+│ OBSERVABILITY                                               │
+│ Prometheus │ Grafana │ Loki │ Tempo │ OTel │ Alertmanager  │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│ STEP 8 — GITOPS / ARGO CD                                   │
+│                                                             │
+│ Argo CD becomes the Kubernetes deployment authority         │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│ STEP 9 — MICROSERVICES                                      │
+│                                                             │
+│ User │ Product │ Order │ Payment                            │
+│                                                             │
+│ api.dev.emmanuelogah.com                                    │
+│ api.staging.emmanuelogah.com                                │
+│ api.production.emmanuelogah.com                             │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│ STEP 10 — OBSERVABILITY / SRE                               │
+│                                                             │
+│ Metrics │ Logs │ Traces │ SLOs │ Alerts │ Incident Response │
+│ Capacity │ Reliability │ FinOps │ Chaos Engineering         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+```
+STEP 6 — TERRAFORM / AWS
+│
+├── VPC
+├── EKS
+├── RDS
+├── Redis
+├── ECR
+├── IAM
+├── KMS
+├── Secrets Manager
+├── Route 53          ← ADDED
+├── ACM               ← ADDED / clarified
+└── EKS Pod Identity
+          │
+          ▼
+STEP 7 — EKS / KUBERNETES PLATFORM
+│
+├── Foundation
+│   ├── Namespaces
+│   ├── Resource Quotas
+│   ├── LimitRanges
+│   ├── Network Policies
+│   └── Pod Security
+│
+├── Platform
+│   ├── AWS Load Balancer Controller
+│   ├── cert-manager
+│   ├── External Secrets
+│   ├── Autoscaling
+│   ├── Storage
+│   └── Pod Identity
+│
+└── Observability
+    ├── Prometheus
+    ├── Grafana
+    ├── Loki
+    ├── Tempo
+    ├── OpenTelemetry
+    └── Alertmanager
+          │
+          ▼
+STEP 8 — GITOPS / ARGO CD
+          │
+          ▼
+STEP 9 — MICROSERVICES
+          │
+          ▼
+STEP 10 — OBSERVABILITY / SRE
+```
