@@ -1,0 +1,17 @@
+# Reference Helm values; not a HelmRelease.
+# Pin the ESO chart version during Step 8.
+#
+# serviceAccount:
+#   create: false
+#   name: external-secrets
+# securityContext:
+#   runAsNonRoot: true
+#   seccompProfile:
+#     type: RuntimeDefault
+# containerSecurityContext:
+#   allowPrivilegeEscalation: false
+#   capabilities:
+#     drop: [ALL]
+# resources:
+#   requests: {cpu: 100m, memory: 128Mi}
+#   limits: {cpu: 500m, memory: 512Mi}
