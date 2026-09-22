@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: user-service-data
+  namespace: observastack
+  labels:
+    app.kubernetes.io/name: user-service
+    app.kubernetes.io/part-of: observastack
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: observastack-ebs-gp3
+  resources:
+    requests:
+      storage: 20Gi
