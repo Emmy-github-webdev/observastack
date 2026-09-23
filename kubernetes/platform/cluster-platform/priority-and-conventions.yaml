@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: observastack-platform-conventions
+  namespace: platform-system
+  labels:
+    app.kubernetes.io/part-of: observastack
+    app.kubernetes.io/component: cluster-platform
+data:
+  owner: platform-engineering
+  deployment_authority: argocd
+  infrastructure_authority: terraform
+  aws_identity: eks-pod-identity
+  storage_driver: ebs.csi.aws.com
+  dns_provider: coredns
+  metrics_api: metrics.k8s.io
+  policy_baseline: restricted
