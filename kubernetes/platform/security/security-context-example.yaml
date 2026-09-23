@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: observastack-security-baseline
+  namespace: platform-system
+  labels:
+    app.kubernetes.io/part-of: observastack
+    app.kubernetes.io/component: security
+data:
+  pod_security: restricted
+  run_as_non_root: "true"
+  seccomp_profile: RuntimeDefault
+  allow_privilege_escalation: "false"
+  drop_capabilities: ALL
+  static_aws_credentials: forbidden
+  plaintext_secrets_in_git: forbidden
+  production_image_policy: immutable_digest_preferred
