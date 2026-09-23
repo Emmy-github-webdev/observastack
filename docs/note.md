@@ -885,3 +885,25 @@ Object Storage / Local Storage
 
 ```
 ---
+### [Install Loki](https://grafana.com/docs/loki/latest/setup/install/)
+
+- #### [Install using Helm](https://grafana.com/docs/loki/latest/setup/install/helm/) 
+
+#### Helm Charts components
+Three methods of deployment are
+- Monolithic
+- Simple scalable
+- Microservice
+
+By default, the chart installs in monolithic mode (_deploymentMode: Monolithics_). For production at scale, we recommendation dploying Loki in Microservices (_deploymentMode: Distributed_)
+
+The deployment recommendations are _Monolithic_ and _Microservices_.
+
+#### Install the monolithic Helm chart
+  #### Prerequisites
+    - [Installing helm 3 or above](https://helm.sh/docs/intro/install/)
+    - Kubernetes 1.25 or later
+    - A running Kubernetes cluster
+  #### Single Replica or Multiple Replicas
+  These are the two ways to deploy Loki in monolithic mode. Single Replica is useful for testing and development or planning to run Loki as a meta-monitoring system. While Multiple replicas is useful for high availability. It is recommended to run at least three replicas for high availability.
+  
