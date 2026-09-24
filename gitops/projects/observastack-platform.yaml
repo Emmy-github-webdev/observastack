@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: observastack-platform
+  namespace: argocd
+spec:
+  description: ObservaStack platform services and GitOps control plane
+  sourceRepos:
+    - https://github.com/Emmy-github-webdev/observastack.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: observastack
+    - server: https://kubernetes.default.svc
+      namespace: observability
+    - server: https://kubernetes.default.svc
+      namespace: platform-system
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+    - group: networking.k8s.io
+      kind: ClusterNetworkPolicy
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
