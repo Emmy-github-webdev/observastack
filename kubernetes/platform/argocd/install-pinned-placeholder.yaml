@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-installation-contract
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: observastack
+    app.kubernetes.io/component: gitops
+data:
+  installation_mode: ha
+  version_policy: pinned
+  source: official-argo-cd-release
+  installation_note: "Replace this contract with the pinned official HA installation manifest during Step 8 bootstrap."
