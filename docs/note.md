@@ -619,7 +619,7 @@ _On Ubuntu_
   - adduser
   - libfontconfigl
   - musl
-  - _sudo apt-get install -y adduser libfontconfigl musl_
+  - _sudo apt-get install -y adduser libfontconfig1 musl_
 - Install deb package using wget- [Download Grafana](https://grafana.com/grafana/download)
 - sudo dpkg -i grafana _x_x_x_amd64.deb
 - Reload the service - sudo systemctl daemon-reload
@@ -841,7 +841,7 @@ Alerts are sent to notification policies which decides if the notification can b
 ---
 
 ## Grafana Loki - Log Aggregation and Analysis
-Loki is an opn-source log aggregation system designed to work seamlessly with Grafana.
+Loki is an open-source log aggregation system designed to work seamlessly with Grafana.
 
 ### Features of Grafana Loki
 1. _Log Aggregation_: Collecting, storing, and querying large amount of logs.
@@ -853,7 +853,7 @@ Loki is an opn-source log aggregation system designed to work seamlessly with Gr
 
 ### How it works
 
-Your backend service will produce log files and store them somewhere on a disk, for example in a folder called /var/log/ in Linux machine. promtail discover the logs and push it to loki, and loki finally ingest it to grafana.
+Your backend service will produce log files and store them somewhere on a disk, for example in a folder called /var/log/ in Linux machine. promtail discover the logs and push it to loki, and loki finally ingest it to grafana. The promtail agent must be on the server that produces log (like a web server). And then configure promtail to point to Loki server.
 <br>
 
 Grafana Loki is a log aggregation system designed to collect, store, and query logs from applications and infrastructure. It is commonly used together with Grafana, which provides the user interface for searching and visualizing those logs.
@@ -886,6 +886,7 @@ Object Storage / Local Storage
 ```
 ---
 ### [Install Loki](https://grafana.com/docs/loki/latest/setup/install/)
+On ubuntu - _sudo apt-get install loki_
 
 - #### [Install using Helm](https://grafana.com/docs/loki/latest/setup/install/helm/) 
 
@@ -907,3 +908,66 @@ The deployment recommendations are _Monolithic_ and _Microservices_.
   #### Single Replica or Multiple Replicas
   These are the two ways to deploy Loki in monolithic mode. Single Replica is useful for testing and development or planning to run Loki as a meta-monitoring system. While Multiple replicas is useful for high availability. It is recommended to run at least three replicas for high availability.
   
+### [Install promtail](https://github.com/grafana/loki/releases) on the web server or the log generating server
+Promtail is end of life in March 2nd, 2026. It is replaced by alloy.
+- Choose the release you want
+- copy the link
+- download it using wget _wget https://github.com/grafana/loki/releases/download/v3.5.8/promtail-linux-arm64.zip_
+- unzip promtail-linux-arm.zip
+- Move promtail-linux-arm to bin folder - _sudo mv promtail-linux-arm /usr/local/bin/promtail_
+- change owner - _sudo chmod +x /usr/local/bin/promtail_
+- Chnage directory to etc - _cd /etc_
+- Create promtail directory in the /etc - _sudo mkdir /etc/promtail_
+- Change directory to the promatil - _cd /etc/promtail_
+- Create promtail config.yml file - _
+_
+- Add the config file content
+
+```
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://IP_Address_of_loki_server:3100/loki/api/v1/push
+
+scrape_configs:
+- job_name: system
+  static_configs:
+  - targets:
+      - localhost
+    labels:
+      job: varlogs
+      __path__: /var/log/*log
+      team: DevOps
+      env: Prod
+      component:
+  pipeline_stages:
+  - logfmt:
+      mapping:
+        component:
+  - labels:
+      component:
+```
+- save it
+- Create a service by change directory to system - _cd /etc/systemd/system/_
+- Create a service file _sudo vim /etc/systemd/system/promtail.service_
+
+```
+[Unit]
+Description=Loki Promtail
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/promtail -config.file=/etc/promtail/config.yml
+Restart=always
+
+[Install]
+WantedBy=default.target
+```
+- save
+- start promtail service - _sudo systemctl start promtail.service_
+- check the service - _sudo systemctl status promtail.service_
