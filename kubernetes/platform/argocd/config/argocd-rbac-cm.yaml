@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: argocd
+data:
+  policy.default: role:readonly
+  policy.csv: |
+    p, role:observastack-platform-readonly, applications, get, observastack-platform/*, allow
+    p, role:observastack-platform-readonly, projects, get, observastack-platform, allow
+    p, role:observastack-app-readonly, applications, get, observastack-applications/*, allow
+    p, role:observastack-app-sync, applications, get, observastack-applications/*, allow
+    p, role:observastack-app-sync, applications, sync, observastack-applications/*, allow
+    p, role:observastack-prod-readonly, applications, get, observastack-production/*, allow
+    g, observastack-platform-readers, role:observastack-platform-readonly
+    g, observastack-developers, role:observastack-app-readonly
+    g, observastack-release-engineers, role:observastack-app-sync
+    g, observastack-production-readers, role:observastack-prod-readonly

@@ -4,3 +4,8 @@ namespace: argocd
 resources:
   - namespace.yaml
   - install-pinned-placeholder.yaml
+  - config/argocd-cm.yaml
+  - config/argocd-rbac-cm.yaml
+  - config/argocd-cmd-params-cm.yaml
+  - config/argocd-resource-exclusions.yaml
+  - config/argocd-repo-template.yaml

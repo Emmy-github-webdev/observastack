@@ -1,0 +1,15 @@
+# Template only. DO NOT apply with credentials.
+#
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: observastack-repository
+#   namespace: argocd
+#   labels:
+#     argocd.argoproj.io/secret-type: repository
+# type: Opaque
+# stringData:
+#   type: git
+#   url: https://github.com/Emmy-github-webdev/observastack.git
+#   username: REPLACE_ME
+#   password: REPLACE_ME
