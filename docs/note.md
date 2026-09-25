@@ -984,15 +984,105 @@ OTel is a vendor neutral and open source observability framework.
 
 _Grafana Alloy_ is the right tools to collect, proces, and export telemetry data. It has native pipelines for leading telemetry signals, such as Prometheus and OpenTelemetry, and Databases suck as Loki and Pyroscope.
 
-![Grafana Alloy Architecture](../architecture/alloy_diagram_v2.svg)
+![Grafana Alloy Architecture](../architecture/alloy_diagram_v2.svg) using Ubuntu in this case
 
 #### Setup Grafana Alloy
 - [Install grafana alloy](https://grafana.com/docs/alloy/latest/set-up/)
 - Run Alloy 
   - Start alloy - _sudo systemctl start alloy_
+  - Alloy status - _sudo systemctl status alloy_
   - Configure Alloy to start at boot - _sudo systemctl enable alloy.service_
   - Restart Alloy - _sudo systemctl restart alloy_
   - Stop Alloy - _sudo systemctl stop alloy_
   - View Alloy Logs - _sudo journalctl -u alloy_
 
+#### [Configure Grafana Alloy](https://grafana.com/docs/alloy/latest/configure/linux/)
+_To configure Alloy on Linux:_
+- Edit the default configuration file at _/etc/alloy/config.alloy_
+```
+# Confih All signals Alloys
+
+logging {
+  level  = "debug"
+  format = "logfmt"
+}
+
+otelcol.receiver.otlp "default" {
+  http {}
+  grpc {}
+
+  output {
+    traces  = [otelcol.processor.batch.default.input]
+    metrics = [otelcol.processor.batch.default_metrics.input]
+    logs    = [otelcol.processor.batch.default_logs.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    traces = [otelcol.exporter.otlphttp.tempo.input]
+  }
+}
+
+otelcol.processor.batch "default_metrics" {  
+  output {
+    metrics = [otelcol.exporter.prometheus.default.input]
+  }
+}
+
+otelcol.processor.batch "default_logs" {
+  output {
+    logs = [otelcol.exporter.loki.default.input]
+  }
+}
+
+otelcol.exporter.otlphttp "tempo" {
+    client {
+        endpoint = "http://tempo:4318"
+        tls {
+            insecure             = true
+            insecure_skip_verify = true
+        }
+    }
+}
+
+otelcol.exporter.prometheus "default" {
+  forward_to = [prometheus.remote_write.default.receiver]
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
+    basic_auth {
+      username = "admin"
+      password = "password"
+    }
+  }
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+
+otelcol.receiver.filelog "default" {
+  include = ["/var/log/shoehub/*"]
+  output {
+    logs = [otelcol.exporter.loki.default.input]
+  }
+}
+
+otelcol.exporter.loki "default" {
+  forward_to = [loki.write.local.receiver]
+}
+```
+- Run the following command in a terminal to reload the configuration file - _sudo systemctl reload alloy_
+
+_To change the configuration file used by the service:_
+- Edit the environment file for the service 
+  - Debian or Ubuntu - edit _/etc/default/alloy_
+  - RHEL/Fedora or SUSE/openSUSE: edit _/etc/sysconfig/alloy_
+  - Change the contents of the _CONFIG_FILE_ environment variable to point at the new configuration file.
+  - Restart the Alloy service - _sudo systemctl restart alloy_
 
