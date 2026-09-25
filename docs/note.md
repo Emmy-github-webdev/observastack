@@ -996,7 +996,7 @@ _Grafana Alloy_ is the right tools to collect, proces, and export telemetry data
   - Stop Alloy - _sudo systemctl stop alloy_
   - View Alloy Logs - _sudo journalctl -u alloy_
 
-#### [Configure Grafana Alloy](https://grafana.com/docs/alloy/latest/configure/linux/)
+#### [Configure Grafana Alloy](https://grafana.com/docs/alloy/latest/configure/linux/) to receive, process, and export Opentelemetry signals
 _To configure Alloy on Linux:_
 - Edit the default configuration file at _/etc/alloy/config.alloy_
 ```
@@ -1085,4 +1085,64 @@ _To change the configuration file used by the service:_
   - RHEL/Fedora or SUSE/openSUSE: edit _/etc/sysconfig/alloy_
   - Change the contents of the _CONFIG_FILE_ environment variable to point at the new configuration file.
   - Restart the Alloy service - _sudo systemctl restart alloy_
+
+#### Sending Metrics from a Microservice to Grafana Alloy and Prometheus
+Note: Two protocols that suppoeted by OT, LP exporter for exporting metrics are
+- HttpProtobuf with port number 4318 - _http://localhost:4318/v1/metrics_
+- gRPCwith port number 4317 - _http://localhost:4317/v1/metrics_
+
+#### Shipping Logs to Loki with Alloy
+
+Always use the Grafana Alloy [Reference documentation](https://grafana.com/docs/alloy/latest/reference/components/loki/)
+
+Let use the _loki.write_ for this case
+- Open the alloy config.alloy file - _/etc/alloy/config.alloy_
+- Add the loki.write to the file
+```
+.
+.
+.
+
+# Import log from (source)
+loki.source.file "tmpfiles" {
+  targets    = [
+    {__path__ = "/var/log/*", "VM" = "Ubuntu Desktop"},
+    {__path__ = "/var/log/syslog/*", "Syslog" = "Ubuntu Desktop"},
+  ]
+  forward_to = [loki.write.local.receiver]
+}
+
+#For OTel use otelcol - exporter
+otelcol.exporter.loki "default" {
+  forward_to = [loki.write.local.receiver]
+}
+
+#For OTel use otelcol - reciever
+otelcol.receiver.filelog "default" {
+  include = ["/var/log/*.log"]
+  operators = [{
+    type = "regex_parser",
+    regex = "^(?P<timestamp>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3,6}Z)",
+    timestamp = {
+      parse_from = "attributes.timestamp",
+      layout = "%Y-%m-%dT%H:%M:%S.%fZ",
+      location = "UTC",
+    },
+  }]
+  output {
+      logs = [otelcol.exporter.loki.default.input]
+  }
+}
+
+# Forward logs to loki
+loki.write "local" {
+    endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+       # basic_auth {
+        #    username = sys.env("LOKI_USERNAME")
+        #    password = sys.env("GRAFANA_CLOUD_API_KEY")
+        #}
+    }
+}
+```
 
