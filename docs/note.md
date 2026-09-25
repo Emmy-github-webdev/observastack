@@ -971,3 +971,28 @@ WantedBy=default.target
 - save
 - start promtail service - _sudo systemctl start promtail.service_
 - check the service - _sudo systemctl status promtail.service_
+
+---
+
+### Grafana Alloy
+
+#### Opentelemetry
+OTel is a vendor neutral and open source observability framework.
+- OTel collects and exports metrics, Logs and traces
+- OTel is not an obeservabilty backend like prometheus
+- OTel focuses on generation, collection, and export of telemetry
+
+_Grafana Alloy_ is the right tools to collect, proces, and export telemetry data. It has native pipelines for leading telemetry signals, such as Prometheus and OpenTelemetry, and Databases suck as Loki and Pyroscope.
+
+![Grafana Alloy Architecture](../architecture/alloy_diagram_v2.svg)
+
+#### Setup Grafana Alloy
+- [Install grafana alloy](https://grafana.com/docs/alloy/latest/set-up/)
+- Run Alloy 
+  - Start alloy - _sudo systemctl start alloy_
+  - Configure Alloy to start at boot - _sudo systemctl enable alloy.service_
+  - Restart Alloy - _sudo systemctl restart alloy_
+  - Stop Alloy - _sudo systemctl stop alloy_
+  - View Alloy Logs - _sudo journalctl -u alloy_
+
+
