@@ -1175,11 +1175,11 @@ Tracing is the tracking and monitoring the flow of requests as they propagate th
 
 #### Install Grafana Tempo - Ubuntu
 - Go to the [release](https://github.com/grafana/tempo/releases) page and download the release
-- copy the release link _https://github.com/grafana/tempo/releases/download/v3.0.3/tempo_3.0.3_linux_arm64.deb_
+- copy the release link _https://github.com/grafana/tempo/releases/download/v3.0.3/tempo_3.0.3_linux_amd64.deb_
 - Download the Tempo binary
 ```
 curl -Lo tempo.deb \
-  https://github.com/grafana/tempo/releases/download/v3.0.3/tempo_3.0.3_linux_arm64.deb
+  https://github.com/grafana/tempo/releases/download/v3.0.3/tempo_3.0.3_linux_amd64.deb
 ```
 - Install Package - _sudo dpkg -i tempo.deb_
 - Create a tempo config file
@@ -1188,4 +1188,41 @@ curl -Lo tempo.deb \
 - Start the tempo: _systemctl start tempo.service_
 - Check the tempo status: _systemctl status tempo.service_
 
+#### Configure Grafana Alloy to forward Traces to Grafana Tempo
+- Update the Grafana Alloy config.alloy
+```
+logging {
+  level = "debug"
+  format = "logfmt"
+}
+
+otelcol.receiver.otlp "default" {
+  http {
+    endpoint:"0.0.0.0:4320"
+  }
+
+  output {
+    traces  = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    metrics = [otelcol.exporter.otlphttp.tempo.input]
+    logs    = [otelcol.exporter.otlphttp.tempo.input]
+    traces  = [otelcol.exporter.otlphttp.tempo.input]
+  }
+}
+
+otelcol.exporter.otlphttp "tempo" {
+    client {
+        endpoint = "http://tempo:4318"
+        tls {
+            insecure             = true
+            insecure_skip_verify = true
+        }
+    }
+}
+```
+- Restart your grafana alloy.
 
