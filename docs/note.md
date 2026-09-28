@@ -2,17 +2,14 @@
 
 ## Monitoring
 Monitoring is collecting and visualising data about systems regularly so that the system's health can be viewed and tracked.
----
 
 ## Telemetry Data
 Telemetry data are data used to find where the problem might be.
----
 
 ## Metrics used to measure the DevOps Success
 - Mean Time to Detection (MTTD) - is the amount of time, on average, between the start of an issue and when teams become aware of it.
 
 - Mean Time to resolve (MTTR) - is the average ammount of time between when an issue is detected, and when systems are fixed and operating normally.
----
 
 ## Methods Monitoring 
 
@@ -26,21 +23,18 @@ Methods of collecting the metrics are
 2. Use Method: Utilization, saturation, error. This id for the infrastructure layer.
 3. Four Golden Signals: Latency, Traffic, Errors, Saturation. This covers service layer and some extend the infrastructure layer.
 4. Core Web Vitals: Largets contentful paint, first input delay, cumulative layout shift. This is exclusively for the UI layer and website.
----
 
 ## methods of metric collection
 
 1. Push method: Applications and Microservices send the metrics to an endpoint via TCP, UDP, or HTTP. Example is an application sending metrics to StatsD, to be stored on Graphite.
 
 2. Scrape method: Applications and Microservices provide APIs for the time series database, to read the metrics. Example is prometheus scraping metrics.
----
 
 ## Types of Telemetry Data
 1. Metric
 2. Event
 3. Log
 4. Trace
----
 
 ## Install Prometheus on Linux Ububtu
 
@@ -104,7 +98,6 @@ EOF>>
 - start the service - sudo systemctl start prometheus
 - Check Prometheus status - sudo systemctl status prometheus
 - Lunch the prometheus on browser - VMIP:9090
----
 
 ### Using UserData for EC2
 ```
@@ -283,11 +276,9 @@ systemctl --no-pager status prometheus
 echo ""
 echo "Prometheus installation completed successfully."
 ```
----
 
 ## Data Collection
 Exporter is used to get metrics from a Linux server, Database, IoT, Amazon clouwatch, HAProxy by installing the exporter in the target or source of the metrics. The prometheus pull the metrics from the exporter.
----
 
 ### Scraping
 Scraping is the process of connecting to an exporter and pulling the metrics into Prometheus is called scraping. Scraping can be configured in the prometheus config file. By default, prometheus connect to the exporters and pulls the metrics in every 15 seconds and store it in prometheus.
@@ -303,7 +294,6 @@ A push gateway is a component of prometheus which acts as temporary storage, whe
   - Disk usage
   - Memmory usage
   - Network I/O
----
 
 ### Setup Node Exporter
 _Note that you do not install node exporter on the same machine where prometheus is installed, unless you want to collect metrics from the same machine with prometheus installed_
@@ -319,7 +309,6 @@ Also consider the following configuration
 - Unzip the downloaded node exporter
 - change directory to the unzipped node exporter
 - Run it - ./node_exporter
----
 
 ### Using UserData
 ```
@@ -454,7 +443,6 @@ systemctl --no-pager status node_exporter
 echo ""
 echo "Node Exporter installation completed successfully."
 ```
----
 
 ## Configure Prometheus to scrape metrics from application server
 - Lunch the prometheus server
@@ -475,7 +463,6 @@ echo "Node Exporter installation completed successfully."
   - sudo systemctl start prometheus
 - Relunch your prometheus on browser
 - Click on the status and you should see target server/endpoint
----
 
 ## Run node exporter as a service
 
@@ -520,7 +507,6 @@ WantedBy=multi-user.target
 - Enable node service: sudo systemctl enable node
 - Start the node service: sudo systemctl start node
 - Check the status: sudo systemctl status node
----
 
 ## Data Model
 In Prometheus, data is storedas time series, which means that we have a metric and there is a timestamp, a linux timestamp attached to it. 
@@ -545,7 +531,6 @@ In Prometheus, data is storedas time series, which means that we have a metric a
   - Pick one metrics, e.g _node_network_transmit_err_total_
   - Go to the prometheus and search it. It should show metrics.
   - To apply a range:  _node_network_transmit_err_total[5m]_
----
 
 ## Aggregation Operators
 Try the following in prometheus
@@ -559,7 +544,6 @@ Try the following in prometheus
 - group by mode - group(node_cpu_seconds_total) by (mode)
 - Average - avg(node_cpu_seconds_total) by (mode)
 - topk{3, avg(node_cpu_seconds_total) by (mode) by (mode)}
----
 
 ## Time offsets
 Note:
@@ -574,7 +558,6 @@ Note:
 - Apply by code - group(prometheus_http_requests_total) by (code)
 - Average - avg(prometheus_http_requests_total) by (code)
 - avg(prometheus_http_requests_total ofset 8m) by (code)
----
 
 
 ## Functions in prometheus
@@ -627,7 +610,6 @@ _On Ubuntu_
 - Start grafana server - sudo systemctl start grafana-server
 - Check status grafana server - sudo systemctl status grafana-server
 - Lunch on browser - ip:3000
----
 
 ## Configure grafana
 - To make any changes, go to /etc/grafana.
@@ -643,7 +625,6 @@ Dashboard dsign can be for different purposes
 - _Infrastructure (Host, Network, Disk, etc)_: To monitor infrastructure
 - _Synthentic Monitors (Website up?)_: Ping the website to see it it is up
 - _Business (Sales, Refunds, Payments)_: For operation purposes.
----
 
 ### Dashboard structure
 
