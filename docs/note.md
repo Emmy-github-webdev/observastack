@@ -1146,3 +1146,46 @@ loki.write "local" {
 }
 ```
 
+### Grafana Tempo
+Grafana tempo is an open source, easy-to-use, and high scake distributed tracing backend. Grafana uses Tempo as a data source to visualise Trace data. Grafana supports a query language called TraceQl.
+
+Grafana tempo has benefits over the other tracing system.
+- grafana tempo does not need a database
+- It can use local storage, AWS S3, Google Cloud Storage and Azure Blob
+
+#### Tracing and Microservices 
+Tracing is the tracking and monitoring the flow of requests as they propagate through various services within a distributed system.
+
+- _Concepts and terminologies_
+  - _Trace_: Represent the overall flow or a request as it traverses through multiple services.It consists of one or more spans. Trace has Trace ID.
+  - _Span_: A single unit of work within a Trace. Information about specific action or operation. Span has Span ID
+  - _Trace Context_: Metadata of each trace. it has Trace ID and Span ID
+  - _Sampling_: Which request to trace?
+
+- _Tracing Systems_
+  - _For instrumentation_
+    - zipkin
+    - Opentelemetry
+    - NewTelic
+  - _To capture, store, analyse and visualise Trace data_
+    - _Zipkin_
+    - _Jaeger_
+    - _NewRelic_
+    - _Grafana Tempo_
+
+#### Install Grafana Tempo - Ubuntu
+- Go to the [release](https://github.com/grafana/tempo/releases) page and download the release
+- copy the release link _https://github.com/grafana/tempo/releases/download/v3.0.3/tempo_3.0.3_linux_arm64.deb_
+- Download the Tempo binary
+```
+curl -Lo tempo.deb \
+  https://github.com/grafana/tempo/releases/download/v3.0.3/tempo_3.0.3_linux_arm64.deb
+```
+- Install Package - _sudo dpkg -i tempo.deb_
+- Create a tempo config file
+  - Open the config file - _sudo vim /etc/tempo/config.yml_
+  - Update it if you want to change something else close and continue
+- Start the tempo: _systemctl start tempo.service_
+- Check the tempo status: _systemctl status tempo.service_
+
+
