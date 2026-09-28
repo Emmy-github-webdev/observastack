@@ -886,7 +886,17 @@ Object Storage / Local Storage
 ```
 ---
 ### [Install Loki](https://grafana.com/docs/loki/latest/setup/install/)
-On ubuntu - _sudo apt-get install loki_
+
+On ubuntu 
+- Create loki user - _sudo useradd --system --no-create-home --shell /usr/sbin/nologin loki_ # nologin for testing purposes
+- Add the [Grafana Advanced Package Tool](https://apt.grafana.com/) (APT)
+```
+# mkdir -p /etc/apt/keyrings/
+# sudo wget -q -O - https://apt.grafana.com/gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/grafana.gpg
+# echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | sudo tee /etc/apt/sources.list.d/grafana.list
+```
+- _sudo apt-get install loki_
+- _sudo systemctl start loki_
 
 - #### [Install using Helm](https://grafana.com/docs/loki/latest/setup/install/helm/) 
 
@@ -1226,3 +1236,387 @@ otelcol.exporter.otlphttp "tempo" {
 ```
 - Restart your grafana alloy.
 
+### Project based for Two Ubuntu VMs
+- Ubuntu Desktop services as the Log source
+- Unbuntu Server as Loki, prometheus, tempo, and Grafana server
+
+_Architecture_
+
+```
+                       Ubuntu Desktop A
+                  ┌─────────────────────────┐
+                  │                         │
+                  │     Grafana Alloy       │
+                  │                         │
+                  │  ┌───────────────────┐  │
+                  │  │ systemd journal   │──┼─────┐
+                  │  └───────────────────┘  │     │
+                  │                         │     │
+                  │  ┌───────────────────┐  │     │
+                  │  │ /var/log          │──┼─────┤
+                  │  └───────────────────┘  │     │
+                  │                         │     │
+                  │  ┌───────────────────┐  │     │
+                  │  │ Docker            │──┼─────┤
+                  │  └───────────────────┘  │     │
+                  │                         │     │
+                  │  ┌───────────────────┐  │     │
+                  │  │ Linux metrics     │──┼─────┤
+                  │  └───────────────────┘  │     │
+                  │                         │     │
+                  │  ┌───────────────────┐  │     │
+Applications ─────►│  │ OTLP :4317/:4318 │──┼─────┤
+                  │  │ traces/logs/      │  │     │
+                  │  │ metrics           │  │     │
+                  │  └───────────────────┘  │     │
+                  │                         │     │
+                  └─────────────────────────┘     │
+                                                  │
+                         ┌────────────────────────┘
+                         │
+                         ▼
+                  Ubuntu Server B
+             ┌──────────────────────────┐
+             │                          │
+             │ Loki       :3100         │◄── logs
+             │                          │
+             │ Prometheus :9090         │◄── metrics
+             │                          │
+             │ Tempo      :3200/4317    │◄── traces
+             │                          │
+             │ Grafana    :3000         │
+             │                          │
+             └──────────────────────────┘
+```
+- Alloy config file - _/etc/alloy/config.alloy_
+```
+// ============================================================
+// Ubuntu Desktop A - Grafana Alloy
+// ============================================================
+//
+// Logs:
+//   - systemd journal
+//   - /var/log/**/*.log
+//   - Docker containers
+//   - OpenTelemetry application logs
+//
+// Metrics:
+//   - CPU
+//   - RAM
+//   - Disk
+//   - Filesystems
+//   - Network
+//   - Load
+//   - Processes
+//   - OpenTelemetry application metrics
+//
+// Traces:
+//   - OpenTelemetry application traces
+//
+// Destinations on Ubuntu Server B:
+//   Loki       -> 192.168.1.50:3100
+//   Prometheus -> 192.168.1.50:9090
+//   Tempo      -> 192.168.1.50:4317
+//
+// Alloy metrics endpoint:
+//   http://192.168.1.100:12345/metrics
+//
+// NOTE:
+// The Alloy HTTP listen address/port is configured by the
+// systemd service, not by this config:
+//
+//   --server.http.listen-addr=0.0.0.0:12345
+//
+// Restrict TCP/12345 in the firewall so only Server B can
+// access it.
+// ============================================================
+
+
+// ============================================================
+// LOKI
+// ============================================================
+//
+// All Loki-compatible logs ultimately flow through this writer.
+//
+// Sources:
+//   systemd journal
+//   /var/log files
+//   Docker
+//   OpenTelemetry logs
+// ============================================================
+
+loki.write "server_b" {
+  endpoint {
+    url = "http://192.168.1.50:3100/loki/api/v1/push"
+  }
+
+  external_labels = {
+    environment = "desktop"
+    host        = sys.env("HOSTNAME")
+  }
+}
+
+
+// ============================================================
+// SYSTEMD JOURNAL
+// ============================================================
+
+loki.source.journal "systemd" {
+  forward_to = [
+    loki.write.server_b.receiver
+  ]
+
+  labels = {
+    job    = "systemd-journal"
+    host   = sys.env("HOSTNAME")
+    source = "journald"
+  }
+}
+
+
+// ============================================================
+// /var/log FILES
+// ============================================================
+//
+// Recursively finds .log files below /var/log.
+//
+// Compressed/rotated archives are excluded.
+//
+// journald is collected separately above.
+//
+// Some Ubuntu systems forward journald messages to syslog.
+// In that situation an event may appear in both sources.
+// The source labels distinguish them.
+// ============================================================
+
+loki.source.file "var_log" {
+  targets = [
+    {
+      __path__         = "/var/log/**/*.log"
+      __path_exclude__ = "/var/log/**/*.gz"
+      job              = "var-log"
+      host             = sys.env("HOSTNAME")
+      source           = "file"
+    },
+  ]
+
+  forward_to = [
+    loki.write.server_b.receiver
+  ]
+
+  file_match {
+    enabled     = true
+    sync_period = "10s"
+  }
+}
+
+
+// ============================================================
+// DOCKER DISCOVERY
+// ============================================================
+
+discovery.docker "linux" {
+  host = "unix:///var/run/docker.sock"
+}
+
+
+// ============================================================
+// DOCKER CONTAINER LOGS
+// ============================================================
+
+loki.source.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+
+  targets = discovery.docker.linux.targets
+
+  labels = {
+    job    = "docker"
+    host   = sys.env("HOSTNAME")
+    source = "docker"
+  }
+
+  forward_to = [
+    loki.write.server_b.receiver
+  ]
+}
+
+
+// ============================================================
+// LINUX SYSTEM METRICS
+// ============================================================
+//
+// Uses Alloy's built-in unix/node_exporter integration.
+//
+// Collects:
+//
+//   CPU
+//   memory
+//   filesystem
+//   disk I/O
+//   network
+//   load average
+//   processes
+//   kernel statistics
+// ============================================================
+
+prometheus.exporter.unix "linux" {
+}
+
+
+// ============================================================
+// SCRAPE LINUX SYSTEM METRICS
+// ============================================================
+
+prometheus.scrape "linux" {
+  targets = prometheus.exporter.unix.linux.targets
+
+  scrape_interval = "15s"
+
+  forward_to = [
+    prometheus.remote_write.server_b.receiver
+  ]
+}
+
+
+// ============================================================
+// PROMETHEUS REMOTE WRITE
+// ============================================================
+//
+// Server B Prometheus must have:
+//
+//   --web.enable-remote-write-receiver
+//
+// The endpoint receives metrics from both:
+//
+//   1. Alloy's Linux system metrics
+//   2. OpenTelemetry application metrics
+// ============================================================
+
+prometheus.remote_write "server_b" {
+  endpoint {
+    url = "http://192.168.1.50:9090/api/v1/write"
+  }
+}
+
+
+// ============================================================
+// OPENTELEMETRY RECEIVER
+// ============================================================
+//
+// Applications on Desktop A can send:
+//
+//   OTLP/gRPC -> 127.0.0.1:4317
+//   OTLP/HTTP -> 127.0.0.1:4318
+//
+// Localhost is intentional. If remote applications need to
+// send telemetry, change the endpoints and firewall rules.
+// ============================================================
+
+otelcol.receiver.otlp "applications" {
+
+  grpc {
+    endpoint = "127.0.0.1:4317"
+  }
+
+  http {
+    endpoint = "127.0.0.1:4318"
+  }
+
+  output {
+    metrics = [
+      otelcol.processor.batch.applications.input
+    ]
+
+    logs = [
+      otelcol.processor.batch.applications.input
+    ]
+
+    traces = [
+      otelcol.processor.batch.applications.input
+    ]
+  }
+}
+
+
+// ============================================================
+// OPENTELEMETRY BATCH PROCESSOR
+// ============================================================
+//
+// Batching reduces network overhead and improves export
+// efficiency.
+// ============================================================
+
+otelcol.processor.batch "applications" {
+
+  output {
+    metrics = [
+      otelcol.exporter.prometheus.server_b.input
+    ]
+
+    logs = [
+      otelcol.exporter.loki.server_b.input
+    ]
+
+    traces = [
+      otelcol.exporter.otlp.tempo.input
+    ]
+  }
+}
+
+
+// ============================================================
+// OTEL METRICS -> PROMETHEUS
+// ============================================================
+//
+// Converts OTLP metrics into Prometheus-compatible metrics,
+// then passes them into the existing prometheus.remote_write
+// pipeline above.
+// ============================================================
+
+otelcol.exporter.prometheus "server_b" {
+  forward_to = [
+    prometheus.remote_write.server_b.receiver
+  ]
+}
+
+
+// ============================================================
+// OTEL LOGS -> LOKI
+// ============================================================
+//
+// Converts OTLP logs into Loki log entries and forwards them
+// through the existing Loki writer above.
+// ============================================================
+
+otelcol.exporter.loki "server_b" {
+  forward_to = [
+    loki.write.server_b.receiver
+  ]
+}
+
+
+// ============================================================
+// OTEL TRACES -> TEMPO
+// ============================================================
+//
+// Assumes Tempo on Server B is accepting OTLP/gRPC on:
+//
+//   192.168.1.50:4317
+//
+// Change this if Tempo uses another address/port.
+//
+// If Tempo is configured for OTLP/HTTP instead, use
+// otelcol.exporter.otlphttp instead.
+// ============================================================
+
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "192.168.1.50:4317"
+
+    tls {
+      insecure = true
+    }
+  }
+}
+
+```
