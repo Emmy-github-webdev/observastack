@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: example-service-success-rate
+  namespace: observastack
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  args:
+    - name: service-name
+      value: example-service
+  metrics:
+    - name: success-rate
+      interval: 1m
+      initialDelay: 2m
+      successCondition: result[0] >= 0.99
+      failureLimit: 2
+      provider:
+        prometheus:
+          # Replace with the actual in-cluster Prometheus service.
+          address: http://REPLACE_PROMETHEUS_SERVICE.observability.svc:9090
+          query: |
+            (
+              sum(rate(http_requests_total{
+                service="{{args.service-name}}",
+                status=~"2.."
+              }[5m]))
+            )
+            /
+            clamp_min(
+              sum(rate(http_requests_total{
+                service="{{args.service-name}}"
+              }[5m])),
+              1
+            )

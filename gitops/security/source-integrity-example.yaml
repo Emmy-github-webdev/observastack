@@ -1,0 +1,20 @@
+# Example only. Replace the placeholder key fingerprint and verify the Argo CD version/configuration before enabling.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: observastack-source-integrity-example
+  namespace: argocd
+spec:
+  description: Example source-integrity policy; do not apply until the signing key is provisioned
+  sourceRepos:
+    - https://github.com/Emmy-github-webdev/observastack.git
+  destinations: []
+  sourceIntegrity:
+    git:
+      policies:
+        - repos:
+            - https://github.com/Emmy-github-webdev/observastack.git
+          gpg:
+            mode: strict
+            keys:
+              - REPLACE_WITH_VERIFIED_GPG_KEY_FINGERPRINT

@@ -20,8 +20,12 @@ spec:
       kind: Service
     - group: apps
       kind: Deployment
-    - group: apps
-      kind: StatefulSet
+    - group: argoproj.io
+      kind: Rollout
+    - group: argoproj.io
+      kind: AnalysisTemplate
+    - group: argoproj.io
+      kind: AnalysisRun
     - group: autoscaling
       kind: HorizontalPodAutoscaler
     - group: policy
@@ -33,7 +37,10 @@ spec:
   syncWindows:
     - kind: deny
       schedule: "0 0 * * *"
-      duration: 24h
+      duration: 30m
       applications:
-        - "*"
+        - "*-production"
       manualSync: true
+      description: "Production change-freeze window; emergency manual sync remains possible"
+  sourceNamespaces: []
+  permitOnlyProjectScopedClusters: false

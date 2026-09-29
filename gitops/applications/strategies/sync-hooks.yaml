@@ -1,0 +1,59 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: example-service-preflight
+  namespace: observastack
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: preflight
+          image: public.ecr.aws/docker/library/busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Replace with an idempotent backward-compatible migration/preflight check."
+              exit 0
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: example-service-smoke-test
+  namespace: observastack
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/sync-wave: "10"
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: smoke-test
+          image: public.ecr.aws/docker/library/busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Replace with a real bounded smoke test."
+              exit 0
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault

@@ -4,7 +4,7 @@ metadata:
   name: observastack-applications
   namespace: argocd
 spec:
-  description: ObservaStack application workloads
+  description: ObservaStack non-production application workloads
   sourceRepos:
     - https://github.com/Emmy-github-webdev/observastack.git
   destinations:
@@ -20,8 +20,12 @@ spec:
       kind: Service
     - group: apps
       kind: Deployment
-    - group: apps
-      kind: StatefulSet
+    - group: argoproj.io
+      kind: Rollout
+    - group: argoproj.io
+      kind: AnalysisTemplate
+    - group: argoproj.io
+      kind: AnalysisRun
     - group: autoscaling
       kind: HorizontalPodAutoscaler
     - group: policy

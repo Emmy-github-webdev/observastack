@@ -1,0 +1,84 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: observastack-services
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - service: user-service
+            environment: dev
+          - service: product-service
+            environment: dev
+          - service: order-service
+            environment: dev
+          - service: payment-service
+            environment: dev
+          - service: user-service
+            environment: staging
+          - service: product-service
+            environment: staging
+          - service: order-service
+            environment: staging
+          - service: payment-service
+            environment: staging
+  template:
+    metadata:
+      name: '{{service}}-{{environment}}'
+      labels:
+        observastack.io/service: '{{service}}'
+        observastack.io/environment: '{{environment}}'
+    spec:
+      project: observastack-applications
+      source:
+        repoURL: https://github.com/Emmy-github-webdev/observastack.git
+        targetRevision: refs/heads/main
+        path: 'gitops/environments/{{environment}}/{{service}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: observastack
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - ApplyOutOfSyncOnly=true
+      revisionHistoryLimit: 10
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: observastack-services-production
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - service: user-service
+            environment: production
+          - service: product-service
+            environment: production
+          - service: order-service
+            environment: production
+          - service: payment-service
+            environment: production
+  template:
+    metadata:
+      name: '{{service}}-{{environment}}'
+      labels:
+        observastack.io/service: '{{service}}'
+        observastack.io/environment: '{{environment}}'
+    spec:
+      project: observastack-production
+      source:
+        repoURL: https://github.com/Emmy-github-webdev/observastack.git
+        targetRevision: refs/heads/main
+        path: 'gitops/environments/{{environment}}/{{service}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: observastack
+      syncPolicy:
+        syncOptions:
+          - ApplyOutOfSyncOnly=true
+      revisionHistoryLimit: 10

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: observastack-gitops-promotion-policy
+  namespace: argocd
+  labels:
+    observastack.io/component: gitops-promotion
+data:
+  promotion-order: dev,staging,production
+  image-policy: immutable-digest
+  production-mode: pull-request-and-manual-sync
+  direct-cluster-mutation: "forbidden"
+  rebuild-on-promotion: "false"

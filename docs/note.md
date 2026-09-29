@@ -76,6 +76,7 @@ ExecStart=/usr/local/bin/prometheus \
   --web.console.templates=/etc/prometheus/consoles \
   --web.console.libraries=/etc/prometheus/console_libraries \
   --web.listen-address=0.0.0.0:9090 \
+  --web.enable-remote-write-receiver \
   --web.external-url=
 
 SyslogIdentifier=prometheus
@@ -1165,6 +1166,8 @@ Tracing is the tracking and monitoring the flow of requests as they propagate th
     - _Grafana Tempo_
 
 #### Install Grafana Tempo - Ubuntu
+- create the data storage directories - _sudo mkdir -p /data/tempo /var/tempo_
+- Set directory owner to Tempo - _sudo chown -R tempo /data/tempo /var/tempo_
 - Go to the [release](https://github.com/grafana/tempo/releases) page and download the release
 - copy the release link _https://github.com/grafana/tempo/releases/download/v3.0.3/tempo_3.0.3_linux_amd64.deb_
 - Download the Tempo binary

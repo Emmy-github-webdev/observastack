@@ -1,0 +1,18 @@
+# Example RBAC policy. Bind the groups to the organization's actual OIDC claims before enabling.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm-example
+  namespace: argocd
+data:
+  policy.default: role:readonly
+  policy.csv: |
+    # Platform operators can administer platform applications only.
+    p, role:platform-operator, applications, get, observastack-platform/*, allow
+    p, role:platform-operator, applications, sync, observastack-platform/*, allow
+    # Release operators can inspect applications and sync production only after external approval.
+    p, role:release-operator, applications, get, observastack-production/*, allow
+    p, role:release-operator, applications, sync, observastack-production/*, allow
+    # Example OIDC groups; replace with verified claims.
+    g, platform-operators, role:platform-operator
+    g, release-operators, role:release-operator
