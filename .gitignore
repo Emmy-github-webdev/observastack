@@ -10,3 +10,9 @@ crash.*.log
 *.tfvars
 *.tfvars.json
 !example.tfvars
+
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.env
